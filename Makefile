@@ -118,9 +118,7 @@ HEADERS = $(addprefix $(INCDIR)/,	Connection.hpp	\
 									Server.hpp		\
 									Client.hpp)
 
-MESSAGE = hello world !
-
-SRCO_TEST_ = test.o
+SRCO_TEST_TEST = test_test.o
 
 SRCO_TEST_FDSET =	FdSet.o		\
 					test_fdset.o
@@ -140,6 +138,7 @@ SRCO_TEST_CONNECTION = 	Message.o		\
 						SockInfo.o		\
 						SockStream.o	\
 						Connection.o	\
+						Command.o		\
 						test_connection.o
 
 SRCO_TEST_SELECTMODULE = 	Message.o		\
@@ -147,23 +146,36 @@ SRCO_TEST_SELECTMODULE = 	Message.o		\
 							SockInfo.o		\
 							SockStream.o	\
 							Connection.o	\
+							Command.o		\
 							SelectModule.o	\
 							test_selectmodule.o
+
+SRCO_TEST_LOCALSERVER = 	Message.o		\
+							FdSet.o			\
+							SockInfo.o		\
+							SockStream.o	\
+							Connection.o	\
+							Client.o		\
+							Command.o		\
+							CommandLib.o	\
+							SelectModule.o	\
+							LocalServer.o	\
+							test_localserver.o
 
 SRCO_TEST_COMMAND =	Message.o		\
 					Command.o		\
 					test_command.o
 
-SRCO_SVR = 	Connection.o	\
+SRCO_SVR = 	Message.o		\
 			FdSet.o			\
-			Message.o		\
-			ServerInfo.o	\
 			SockInfo.o		\
 			SockStream.o	\
+			Connection.o	\
+			Client.o		\
 			Command.o		\
 			CommandLib.o	\
-			Server.o		\
-			Client.o		\
+			SelectModule.o	\
+			LocalServer.o	\
 			main.o
 
 # SRCO_CLT =	$(addprefix $(OBJDIR)/, client_main.o)

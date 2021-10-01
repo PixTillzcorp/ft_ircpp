@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2021-09-03 17:39:59 }--------------------------**
+**----- Updated -------------{ 2021-10-01 20:46:42 }--------------------------**
 ********************************************************************************
 */
 
@@ -23,19 +23,21 @@
 
 // ____________Canonical Form____________
 Connection::~Connection(void) { return; }
-// Connection::Connection(void) { return; }
+Connection::Connection(void) { return; }
 Connection::Connection(Connection const &src) { *this = src; }
 Connection	&Connection::operator=(Connection const &src) {
-	this->_sin = src.getSockinfo();
+	this->_sin = src.getSockInfo();
 	this->_stream = src.getStream();
 	this->_status = src.getStatus();
+	this->_link = src.getLink();
 	return *this;
 }
 
 // _____________Constructor______________
 Connection::Connection(std::string const &port, u_int16_t family) throw(Connection::LocalSocketException) :
-																	_sin(SockInfo("", port, family, BINDABLE)),
-																	_status(CONX_LOCAL | (family == AF_INET6 ? CONX_IPV6 : CONX_NOFLAG)) {
+																	_sin("", port, family, BINDABLE),
+																	_status(CONX_LOCAL | (family == AF_INET6 ? CONX_IPV6 : CONX_NOFLAG)),
+																	_link(nullptr) {
 	int yes = 1;
 	int	sock;
 
@@ -51,42 +53,40 @@ Connection::Connection(std::string const &port, u_int16_t family) throw(Connecti
 }
 
 Connection::Connection(SockInfo const &sin, int sock, unsigned char status) :	_sin(sin),
-																				_stream(SockStream(sock)),
-																				_status(status) {
+																				_stream(sock),
+																				_status(status),
+																				_link(nullptr) {
+	if (this->_sin.family() == AF_INET6)
+		this->setIPv6();
 	return;
 }
 
 // __________Member functions____________
-std::string Connection::name(void) { return this->_sin.addrString(); }
-// Command		*Connection::getNextCommand(void) {
-// 	Message *msg;
-
-// 	if (!this->_finished)
-// 	{
-// 		if (!(msg = this->_stream.getLastMessage()))
-// 			return NULL;
-// 		else
-// 			return (new Command(msg));
-// 	}
-// 	return NULL;
-// }
-
-bool Connection::read(void) {
-	if (!(this->_stream.read()))
-	{
-		return false;
-	}
-	return true;
-}
-
+bool Connection::read(void) { return(!this->_stream.read() ? false : true); }
 void Connection::write(void) throw(SockStream::SendFunctionException) { this->_stream.write(); }
 bool Connection::hasOutputMessage(void) const { return (this->_stream.hasOutputMessage()); }
 bool Connection::hasInputMessage(void) const { return (this->_stream.hasInputMessage()); }
+void Connection::clearMessages(void) { this->_stream.clear(); }
 
-// void Connection::sendCommand(Command const &cmd) {
-// 	if (!this->_finished)
-// 		this->_stream.queueMessage(cmd.message());
-// }
+Message *Connection::getLastMessage(void) { //debug
+	if (this->hasInputMessage())
+		return this->_stream.getLastMessage();
+	else
+		return (nullptr);
+}
+void Connection::queueMessage(Message msg) { this->_stream.queueMessage(msg); } //debug
+Command *Connection::getLastCommand(void) {
+	if (this->hasInputMessage()) {
+		return (new Command(this->_stream.getLastMessage()));
+	}
+	else
+		return (nullptr);
+}
+void Connection::queueCommand(Command const &cmd) { this->_stream.queueMessage(cmd.message()); }
+void Connection::send(Command const &cmd) { std::cout << cmd.message() << std::endl; this->queueCommand(cmd); }
+
+std::string const Connection::hostname(void) const { return this->_sin.canonname(); }
+std::string const Connection::name(void) const { return("*"); }
 
 bool	Connection::isLocal(void) const { return ((this->_status >> BIT_LOCAL) & 1); }
 bool	Connection::isServer(void) const { return ((this->_status >> BIT_SERVER) & 1); }
@@ -114,11 +114,9 @@ void	Connection::unsetIPv6(void) throw(Connection::FlagException) { this->unsetS
 void	Connection::unsetAuthentified(void) throw(Connection::FlagException) { this->unsetStatusFlag(CONX_AUTHEN); }
 void	Connection::unsetFinished(void) throw(Connection::FlagException) { this->unsetStatusFlag(CONX_FINISH); }
 
-// int	Connection::getSock(void) const { return this->_stream.getSock(); }
-
 // ____________Setter / Getter___________
 // _sin
-SockInfo const		&Connection::getSockinfo(void) const { return this->_sin; }
+SockInfo const		&Connection::getSockInfo(void) const { return this->_sin; }
 void		Connection::setSockinfo(SockInfo const &src) { this->_sin = src; }
 
 // _stream
@@ -129,8 +127,13 @@ void		Connection::setStream(SockStream const &src) { this->_stream = src; }
 unsigned char const	&Connection::getStatus(void) const { return this->_status; }
 void		Connection::setStatus(unsigned char const &src) { this->_status = src; }
 
+// _link
+Connection			*Connection::getLink(void) const { return this->_link; }
+void				Connection::setLink(Connection *src) { this->_link = src; }
+bool				Connection::isLink(void) const { return !(this->_link == nullptr); }
+
 // ########################################
-// 				   PRIVATE
+// 				  PROTECTED
 // ########################################
 
 void Connection::setStatusFlag(unsigned char flag) {
@@ -185,17 +188,16 @@ const char *Connection::LocalSocketException::what() const throw() {
 // 					DEBUG
 // ########################################
 
-Message *Connection::getLastMessage(void) {
-	return this->_stream.getLastMessage();
+std::ostream &operator<<(std::ostream &flux, Connection const &src) {
+	flux << "S[" << src.sock() << "][";
+	flux << (src.isIPv6() ? "IPv6" : "IPv4") << "]Auth[" << (src.isAuthentified() ? "Y" : "N") << "][";
+	flux << (src.isLocal() ? "1" : "0");
+	flux << (src.isServer() ? "1" : "0");
+	flux << (src.isClient() ? "1" : "0");
+	flux << (src.isService() ? "1" : "0");
+	flux << (src.isIPv6() ? "1" : "0");
+	flux << (src.isAuthentified() ? "1" : "0");
+	flux << (src.isFinished() ? "1" : "0");
+	flux << "]" << src.getSockInfo();
+	return flux;
 }
-
-void Connection::queueMessage(Message msg) {
-	this->_stream.queueMessage(msg);
-}
-
-// std::ostream &operator<<(std::ostream &flux, Connection const &src) {
-// 	flux << "Connection [" << src.getStatus() << "]" << std::endl;
-// 	flux << src.getSockinfo();
-// 	flux << "+++++++++++++++++++++++++++++++++" << std::endl;
-// 	return flux;
-// }

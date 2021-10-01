@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2021-09-03 17:07:37 }--------------------------**
+**----- Updated -------------{ 2021-09-10 19:15:00 }--------------------------**
 ********************************************************************************
 */
 
@@ -24,10 +24,7 @@
 // ____________Canonical Form____________
 SelectModule::~SelectModule(void) { return; }
 SelectModule::SelectModule(void) { return; }
-SelectModule::SelectModule(SelectModule const &src) {
-	*this = src;
-	return;
-}
+SelectModule::SelectModule(SelectModule const &src) { *this = src; }
 SelectModule &SelectModule::operator=(SelectModule const &src) {
 	this->_mfds = src.getMfds();
 	this->_rfds = src.getRfds();
@@ -41,11 +38,13 @@ SelectModule::SelectModule(int sock, bool std) {
 	if (sock && sock >= 0)
 	{
 		this->_mfds.addFd(sock);
+		fcntl(sock, F_SETFL, O_NONBLOCK);
 		this->_ufd = sock + 1;
 	}
 	if (std)
 	{
 		this->_mfds.addFd(STDIN_FILENO);
+		fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 		this->_ufd = (!sock ? STDIN_FILENO : sock) + 1;
 	}
 }
@@ -58,14 +57,19 @@ void	SelectModule::call(std::list<Connection *> &conxs) {
 	this->_rfds.zeroFd();
 	this->_rfds.setFds(this->_mfds.getFds());
 	this->_wfds.zeroFd();
-	if (conxs.empty())
-		return ;
 	for (it = conxs.begin(); it != conxs.end(); it++)
 	{
 		if ((*it)->isFinished())
 			this->_rfds.removeFd((*it)->sock());
-		if (!(*it)->isFinished() && (*it)->hasOutputMessage())
+		if ((*it)->hasOutputMessage())
 			this->_wfds.addFd((*it)->sock());
+		else if ((*it)->isFinished()) { // close conx
+			this->_mfds.removeFd((*it)->sock());
+			if (close((*it)->sock()) == -1) // if not a link
+				throw (SelectModule::CloseSocketException());
+			delete (*it);
+			conxs.erase(it);
+		}
 	}
 	if (select(this->_ufd, this->_rfds.getPtr(), this->_wfds.getPtr(), nullptr, nullptr) == -1)
 		throw(SelectModule::SelectException());
@@ -77,6 +81,7 @@ void	SelectModule::addFd(int sock) {
 	if (sock >= this->_ufd)
 		this->_ufd = sock + 1;
 	this->_mfds.addFd(sock);
+	fcntl(sock, F_SETFL, O_NONBLOCK);
 	return;
 }
 
@@ -127,4 +132,15 @@ SelectModule::SelectException &SelectModule::SelectException::operator=(SelectEx
 }
 const char *SelectModule::SelectException::what() const throw() {
 	return ("select() function failed.");
+}
+
+SelectModule::CloseSocketException::~CloseSocketException(void) throw() { return; }
+SelectModule::CloseSocketException::CloseSocketException(void) { return; }
+SelectModule::CloseSocketException::CloseSocketException(CloseSocketException const &src) : std::exception(static_cast<std::exception const &>(src)) { return; }
+SelectModule::CloseSocketException &SelectModule::CloseSocketException::operator=(CloseSocketException const &src) {
+	static_cast<std::exception &>(*this) = static_cast<std::exception const &>(src);
+	return *this;
+}
+const char *SelectModule::CloseSocketException::what() const throw() {
+	return ("close() function failed.");
 }

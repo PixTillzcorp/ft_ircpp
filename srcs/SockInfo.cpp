@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockInfo.cpp }---------------------------------**
 **----- Created -------------{ 2021-05-05 14:52:08 }--------------------------**
-**----- Updated -------------{ 2021-09-03 15:24:04 }--------------------------**
+**----- Updated -------------{ 2021-10-01 20:46:45 }--------------------------**
 ********************************************************************************
 */
 
@@ -31,10 +31,7 @@ SockInfo::SockInfo(void) :	_host(""),
 							_port(""),
 							_bindable(false),
 							_info(nullptr) { return; }
-SockInfo::SockInfo(SockInfo const &src) {
-	*this = src;
-	return;
-}
+SockInfo::SockInfo(SockInfo const &src) { *this = src; }
 SockInfo	&SockInfo::operator=(SockInfo const &src) {
 	this->_host = src.getHost();
 	this->_port = src.getPort();
@@ -49,11 +46,7 @@ SockInfo::SockInfo(std::string const &host, std::string const &port, u_int16_t f
 																										_host(host),
 																										_port(port),
 																										_bindable(bindable) {
-	t_ai	hints;
-
-	std::memset(&hints, 0, sizeof(hints));
-	if (!getprotobyname("tcp") || !this->isIP(family))
-	{
+	if (!getprotobyname("tcp") || !this->isIP(family)) {
 		throw(SockInfo::TcpProtocolException());
 		delete this;
 	}
@@ -62,7 +55,7 @@ SockInfo::SockInfo(std::string const &host, std::string const &port, u_int16_t f
 }
 
 SockInfo::SockInfo(t_sa const *sockaddr, bool bindable) : _info(nullptr), _bindable(bindable) {
-	if (!sockaddr || !getprotobyname("tcp") || (!this->isIPv4(sockaddr) && !this->isIPv6(sockaddr))) {
+	if (!sockaddr || !getprotobyname("tcp") || !this->isIP(sockaddr->sa_family)) {
 		throw(SockInfo::TcpProtocolException());
 		delete this;
 	}
@@ -100,17 +93,17 @@ t_sa const			*SockInfo::sockaddrX(unsigned int x) const throw(SockInfo::NullPtrD
 	return (!ptr ? this->sockaddr() : ptr->ai_addr);
 }
 
-u_int16_t			SockInfo::socktype(void) const { return this->addrinfo()->ai_socktype; }
+u_int16_t			SockInfo::socktype(void) const { return this->socktypeX(0); }
 u_int16_t			SockInfo::socktypeX(unsigned int x) const { return this->addrinfoX(x)->ai_socktype; }
-u_int16_t			SockInfo::protocol(void) const { return this->addrinfo()->ai_protocol; }
+u_int16_t			SockInfo::protocol(void) const { return this->protocolX(0); }
 u_int16_t			SockInfo::protocolX(unsigned int x) const { return this->addrinfoX(x)->ai_protocol; }
-socklen_t			SockInfo::addrLen(void) const { return this->addrinfo()->ai_addrlen; }
+socklen_t			SockInfo::addrLen(void) const { return this->addrLenX(0); }
 socklen_t			SockInfo::addrLenX(unsigned int x) const { return this->addrinfoX(x)->ai_addrlen; }
-std::string			SockInfo::addrString(void) const { return this->getAddrFromSa(this->sockaddr()); }
+std::string			SockInfo::addrString(void) const { return this->addrStringX(0); }
 std::string			SockInfo::addrStringX(unsigned int x) const { return this->getAddrFromSa(this->sockaddrX(x)); }
-u_int16_t			SockInfo::family(void) const { return this->sockaddr()->sa_family; }
+u_int16_t			SockInfo::family(void) const { return this->familyX(0); }
 u_int16_t			SockInfo::familyX(unsigned int x) const { return this->sockaddrX(x)->sa_family; }
-u_int16_t			SockInfo::port(void) const { return this->getPortFromSa(this->sockaddr()); }
+u_int16_t			SockInfo::port(void) const { return this->portX(0); }
 u_int16_t			SockInfo::portX(unsigned int x) const { return this->getPortFromSa(this->sockaddrX(x)); }
 int					SockInfo::nbrInfo(void) const {
 	t_ai			*ptr = this->_info;
@@ -121,6 +114,23 @@ int					SockInfo::nbrInfo(void) const {
 		c++;
 	}
 	return (c);
+}
+std::string			SockInfo::canonname(void) const { return this->canonnameX(0); }
+std::string			SockInfo::canonnameX(unsigned int x) const {
+	if (this->_host.empty())
+		return("localhost");
+	if (this->addrinfoX(x)->ai_canonname == nullptr) {
+		if (!(this->addrStringX(x).compare("::")))
+			return("localhost");
+		if (!(this->addrStringX(x).compare("::1")))
+			return("localhost");
+		else if (!(this->addrStringX(x).compare("127.0.0.1")))
+			return("localhost");
+		else
+			return this->addrStringX(x);
+	}
+	else
+		return std::string(this->addrinfoX(x)->ai_canonname);
 }
 
 // ____________Setter / Getter___________
@@ -192,6 +202,8 @@ void			SockInfo::retrieveInfo(u_int16_t family) throw (SockInfo::GetAddrInfoExce
 	hints.ai_family = family;
 	hints.ai_socktype = SOCK_STREAM;
 	// hints.ai_protocol = getprotobyname("tcp")->p_proto;
+	if (family == AF_INET)
+		hints.ai_flags |= AI_CANONNAME;
 	if (this->_bindable)
 		hints.ai_flags |= AI_PASSIVE; /* For bind() function call if used */
 	if (getaddrinfo(this->_host.c_str(), this->_port.c_str(), &hints, &this->_info))
@@ -242,8 +254,8 @@ const char *SockInfo::NullPtrDataException::what() const throw() {
 // ########################################
 
 std::ostream &operator<<(std::ostream &flux, SockInfo const &src) {
-	flux << "_host: " << src.getHost() << std::endl;
-	flux << "_port: " << src.getPort() << std::endl;
-	flux << "address: " << src.addrString() << std::endl;
+	flux << "[host: " << src.getHost() << ']';
+	flux << "[port: " << src.getPort() << ']';
+	flux << "[addr: " << src.addrString() << ']';
 	return flux;
 }

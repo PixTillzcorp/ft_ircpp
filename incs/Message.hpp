@@ -1,6 +1,7 @@
 #ifndef FT_IRC_MESSAGE_HPP
 #define FT_IRC_MESSAGE_HPP
 
+#include <algorithm>
 #include <iostream>
 #include <string>
 
@@ -29,6 +30,7 @@ public: // #####################################################################
 	// _received
 	bool			isReceived(void) const;
 	void			received(void);
+	void			purify(void);
 
 protected: // ##################################################################
 	std::string		_content;

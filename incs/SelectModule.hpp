@@ -5,6 +5,7 @@
 #include "../incs/FdSet.hpp"
 #include <list>
 #include <unistd.h>
+#include <fcntl.h>
 
 class SelectModule {
 public: // #####################################################################
@@ -50,6 +51,15 @@ public: // #####################################################################
 		SelectException(void);
 		SelectException(SelectException const &src);
 		SelectException &operator=(SelectException const &src);
+		virtual const char *what() const throw();
+	};
+
+	class CloseSocketException : public std::exception { // Flag set/unset error
+	public:
+		virtual ~CloseSocketException(void) throw();
+		CloseSocketException(void);
+		CloseSocketException(CloseSocketException const &src);
+		CloseSocketException &operator=(CloseSocketException const &src);
 		virtual const char *what() const throw();
 	};
 

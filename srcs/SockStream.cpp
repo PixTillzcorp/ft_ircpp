@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockStream.cpp }-------------------------------**
 **----- Created -------------{ 2021-05-07 16:21:55 }--------------------------**
-**----- Updated -------------{ 2021-08-25 15:36:57 }--------------------------**
+**----- Updated -------------{ 2021-09-27 18:12:23 }--------------------------**
 ********************************************************************************
 */
 
@@ -26,10 +26,7 @@
 // ____________Canonical Form____________
 SockStream::~SockStream(void) { return; }
 SockStream::SockStream(void) { return; }
-SockStream::SockStream (SockStream const &src) {
-	*this = src;
-	return;
-}
+SockStream::SockStream(SockStream const &src) { *this = src; }
 SockStream	&SockStream::operator=(SockStream const &src) {
 	this->_sock = src.getSock();
 	this->_rmsg = src.getRmsg();
@@ -78,8 +75,13 @@ void SockStream::queueMessage(Message msg) {
 	this->_wmsg.push(msg);
 }
 
-bool SockStream::hasInputMessage(void) const { return (!this->_rmsg.empty()); }
-bool SockStream::hasOutputMessage(void) const { return (!this->_wmsg.empty()); }
+bool SockStream::hasInputMessage(void) const { return (!this->_rmsg.empty() && this->_rmsg.front().isReceived()); }
+bool SockStream::hasOutputMessage(void) const { return (!this->_wmsg.empty() && this->_wmsg.front().isReceived()); }
+
+void SockStream::clear(void) {
+	while (!this->_wmsg.empty())
+		this->_wmsg.pop();
+}
 
 // ____________Setter / Getter___________
 // _sock
@@ -114,6 +116,7 @@ void SockStream::readMessage(std::stringstream &input) {
 	if (input.eof() == false)			// If EOF not reached (we find a '\n')
 	{
 		this->_rmsg.back().received();	// Mark message as finished
+		this->_rmsg.back().purify();	// Remove '\r' from Win line return
 		this->freshMessage();			// Init next one
 		this->readMessage(input);		// Loop until no more data
 	}

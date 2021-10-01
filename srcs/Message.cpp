@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Message.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-11 16:27:23 }--------------------------**
-**----- Updated -------------{ 2021-08-23 19:49:07 }--------------------------**
+**----- Updated -------------{ 2021-09-27 18:10:37 }--------------------------**
 ********************************************************************************
 */
 
@@ -24,10 +24,7 @@
 // ____________Canonical Form____________
 Message::~Message(void) { return; }
 Message::Message(void) : _content(""), _received(false) { return; }
-Message::Message (Message const &src) {
-	*this = src;
-	return;
-}
+Message::Message(Message const &src) { *this = src; }
 Message			&Message::operator=(Message const &src) {
 	this->_content = src.getContent();
 	this->_received = src.isReceived();
@@ -77,6 +74,11 @@ std::string		Message::getContent(void) const { return this->_content; }
 bool			Message::isReceived(void) const { return this->_received; }
 void			Message::received(void) { this->_received = true; }
 
+void			Message::purify(void) {
+	if (this->isReceived()) {
+		this->_content.erase(std::remove(this->_content.begin(), this->_content.end(), '\r'), this->_content.end());
+	}
+}
 // ########################################
 // 					DEBUG
 // ########################################

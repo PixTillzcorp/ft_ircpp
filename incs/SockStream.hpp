@@ -30,6 +30,8 @@ public: // #####################################################################
 	bool hasInputMessage(void) const;
 	bool hasOutputMessage(void) const;
 
+	void clear(void);
+
 	// ____________Setter / Getter___________
 	// _sock
 	int					getSock(void) const;

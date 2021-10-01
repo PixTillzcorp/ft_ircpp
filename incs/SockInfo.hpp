@@ -50,6 +50,8 @@ public: // #####################################################################
 	u_int16_t			familyX(unsigned int x) const;
 	u_int16_t			port(void) const;
 	u_int16_t			portX(unsigned int x) const;
+	std::string			canonname(void) const;
+	std::string			canonnameX(unsigned int x) const;
 	int					nbrInfo(void) const;
 	
 	// ____________Setter / Getter___________

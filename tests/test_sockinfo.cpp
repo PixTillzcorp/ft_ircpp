@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ test_sockinfo.cpp }----------------------------**
 **----- Created -------------{ 2021-07-29 18:40:30 }--------------------------**
-**----- Updated -------------{ 2021-09-02 20:49:19 }--------------------------**
+**----- Updated -------------{ 2021-09-24 17:16:55 }--------------------------**
 ********************************************************************************
 */
 
@@ -26,6 +26,7 @@ void		showInfo(SockInfo *src) {
 	{
 		DEBUG_LDISPCB(COUT, "Host: ", src->getHost(), DARK_ORANGE, '[');
 		DEBUG_LDISPCB(COUT, "Port: ", src->getPort(), DARK_ORANGE, '[');
+		DEBUG_LDISPCB(COUT, "Canonname: ", src->canonname(), DARK_ORANGE, '[');
 		DEBUG_LDISPCB(COUT, "Address string: ", src->addrString(), DARK_ORANGE, '[');
 	}
 	DEBUG_BAR_DISPC(COUT, '*', 35, ORANGE);
@@ -39,15 +40,16 @@ int main(void) {
 	int nbr_info;
 
 	// hostlist.push_back("qweqwdqw.fqwefqwef.fqwefqe"); /*Wrong one*/
-	hostlist.push_back("www.google.fr");
-	hostlist.push_back("www.google.com");
-	hostlist.push_back("www.amazon.com");
-	hostlist.push_back("www.amazon.fr");
-	hostlist.push_back("www.amazon.de");
-	hostlist.push_back("www.nike.com");
+	// hostlist.push_back("www.google.fr");
+	// hostlist.push_back("www.google.com");
+	// hostlist.push_back("www.amazon.com");
+	// hostlist.push_back("www.amazon.fr");
+	// hostlist.push_back("www.amazon.de");
+	hostlist.push_back("localhost");
+	hostlist.push_back("fe80::2e:c3fc:4419:d152");
 	try {
 		while (!hostlist.empty()) {	
-			si = new SockInfo(hostlist.front(), port, AF_INET, CONNECTABLE);
+			si = new SockInfo(hostlist.front(), port, AF_UNSPEC, BINDABLE);
 			nbr_info = si->nbrInfo();
 			DEBUG_LDISPB(COUT, "-------> Host name: ", hostlist.front(), '[');
 			DEBUG_LDISPB(COUT, "Nbr Info: ", nbr_info, '[');
@@ -55,6 +57,7 @@ int main(void) {
 			{
 				DEBUG_DISPC(COUT, "--------------------------------------------------", DARK_GREY);
 				DEBUG_LDISPB(COUT, (si->familyX(i) == AF_INET ? "IPv4" : "IPv6"), si->addrStringX(i), '[');
+				DEBUG_LDISPB(COUT, "Canonname: ", si->canonnameX(i), '[');
 				if (!port.empty())
 					DEBUG_LDISPB(COUT, "Port: ", si->portX(i), '[');
 			}
@@ -68,7 +71,7 @@ int main(void) {
 		std::cout << e.what() << std::endl;
 	}
 	DEBUG_DISPC(COUT, "--------------------------------------------------", DARK_GREY);
-	si = new SockInfo("www.amazon.com", port, AF_INET6, CONNECTABLE);
+	si = new SockInfo("www.decathlon.com", port, AF_UNSPEC, CONNECTABLE);
 	si_copy = new SockInfo(*si);
 	showInfo(si);
 	showInfo(si_copy);

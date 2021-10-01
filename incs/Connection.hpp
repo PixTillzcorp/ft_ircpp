@@ -1,7 +1,7 @@
 #ifndef FT_IRCPP_CONNECTION_HPP
 #define FT_IRCPP_CONNECTION_HPP
 
-// #include "../incs/CommandLib.hpp"
+#include "../incs/CommandLib.hpp"
 #include "../incs/SockStream.hpp"
 #include "../incs/SockInfo.hpp"
 
@@ -32,7 +32,7 @@ public: // #####################################################################
 	
 	// ____________Canonical Form____________
 	virtual ~Connection();
-	// Connection(); /* Private standard constructor*/
+	Connection();
 	Connection(Connection const &src);
 	Connection &operator=(Connection const &src);
 
@@ -41,18 +41,22 @@ public: // #####################################################################
 	Connection(SockInfo const &sin, int sock, unsigned char status);
 
 	// __________Member functions____________
-	virtual std::string name(void);
-	// bool compare(Connection *test) const;
-	// Command		*getNextCommand(void);
-	// void sendCommand(Command const &cmd);
 	bool read(void);
 	void write(void) throw(SockStream::SendFunctionException);
 	bool hasOutputMessage(void) const;
 	bool hasInputMessage(void) const;
+	void clearMessages(void);
 
-	//debug waiting to get operational Command.cpp
+	//debug waiting to get operational 'Command.cpp'.
 	Message *getLastMessage(void);
 	void queueMessage(Message msg);
+	Command *getLastCommand(void);
+	void queueCommand(Command const &cmd);
+	void send(Command const &cmd); //same that 'queueCommand' but more explicit.
+
+	std::string const hostname(void) const;
+
+	virtual std::string const name(void) const;
 
 	bool isLocal(void) const;
 	bool isServer(void) const;
@@ -62,6 +66,7 @@ public: // #####################################################################
 	bool isIPv6(void) const;
 	bool isAuthentified(void) const;
 	bool isFinished(void) const;
+	bool isRegistered(void) const;
 	int	 sock(void) const;
 
 	void setLocal(void) throw(FlagException);
@@ -83,7 +88,7 @@ public: // #####################################################################
 
 	// ____________Setter / Getter___________
 	// _sin
-	SockInfo const		&getSockinfo(void) const;
+	SockInfo const		&getSockInfo(void) const;
 	void				setSockinfo(SockInfo const &src);
 
 	// _stream
@@ -93,6 +98,11 @@ public: // #####################################################################
 	// _status
 	unsigned char const	&getStatus(void) const;
 	void				setStatus(unsigned char const &src);
+
+	// _link
+	Connection			*getLink(void) const;
+	void				setLink(Connection *src);
+	bool				isLink(void) const;
 
 	// ______________Exceptions______________
 	class FlagException : public std::exception { // Flag set/unset error
@@ -121,9 +131,7 @@ protected: // ##################################################################
 	SockInfo			_sin;
 	SockStream			_stream;
 	unsigned char		_status;
-
-private: // ####################################################################
-	Connection();
+	Connection			*_link;
 
 	void unsetStatusFlag(unsigned char flag);
 	void setStatusFlag(unsigned char flag);
@@ -133,6 +141,6 @@ private: // ####################################################################
 // 					DEBUG
 // ########################################
 
-// std::ostream &operator<<(std::ostream &flux, Connection const &src);
+std::ostream &operator<<(std::ostream &flux, Connection const &src);
 
 #endif //FT_IRCPP_CONNECTION_HPP
