@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2021-09-10 19:15:00 }--------------------------**
+**----- Updated -------------{ 2021-12-07 03:51:05 }--------------------------**
 ********************************************************************************
 */
 
@@ -59,7 +59,7 @@ void	SelectModule::call(std::list<Connection *> &conxs) {
 	this->_wfds.zeroFd();
 	for (it = conxs.begin(); it != conxs.end(); it++)
 	{
-		if ((*it)->isFinished())
+		if ((*it)->isFinished() || (*it)->isLink())
 			this->_rfds.removeFd((*it)->sock());
 		if ((*it)->hasOutputMessage())
 			this->_wfds.addFd((*it)->sock());
@@ -68,7 +68,7 @@ void	SelectModule::call(std::list<Connection *> &conxs) {
 			if (close((*it)->sock()) == -1) // if not a link
 				throw (SelectModule::CloseSocketException());
 			delete (*it);
-			conxs.erase(it);
+			conxs.erase(it--);
 		}
 	}
 	if (select(this->_ufd, this->_rfds.getPtr(), this->_wfds.getPtr(), nullptr, nullptr) == -1)

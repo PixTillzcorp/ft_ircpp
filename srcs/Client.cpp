@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2021-10-01 19:39:45 }--------------------------**
+**----- Updated -------------{ 2021-12-10 05:35:43 }--------------------------**
 ********************************************************************************
 */
 
@@ -19,82 +19,147 @@
 
 // ____________Canonical Form____________
 Client::~Client(void) { return; }
-// Client(void) { return; } /* default constructor is private */
-Client::Client(Client const &src) { *this = src; }
-Client  &Client::operator=(Client const &src) {
-	static_cast<Connection &>(*this) = static_cast<Connection const &>(src);
-	this->_nickname = src.getNickname();
-	this->_username = src.getUsername();
-	this->_realname = src.getRealname();
-	this->_modes = src.getModes();
+Client::Client(Client const &cpy) : inherited(static_cast<inherited const &>(cpy)) { return; }
+Client  &Client::operator=(Client const &cpy) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(cpy);
+	nickname = cpy.nickname;
+	username = cpy.username;
+	realname = cpy.realname;
+	awaymsg = cpy.awaymsg;
+	chans = cpy.chans;
+	modes = cpy.modes;
 	return *this;
 }
 
 // _____________Constructor______________
-Client::Client(Connection *src, NickCommand const &cmd) : Connection(*src), _modes(NOMODE) {
-	this->setClient(); //catch FlagException later or catch it higher.
-	this->_nickname = cmd.nickname();
+Client::Client(Connection *&src, NickCommand const &cmd) : inherited(*src), modes(CLIENT_NOMODE) {
+	isClient(true);
+	nickname = cmd.nickname();
 	delete src;
+	src = this;
 }
 
-Client::Client(Connection *src, UserCommand const &cmd) : Connection(*src), _modes(NOMODE) {
-	this->setClient(); //catch FlagException later or catch it higher.
-	DEBUG_DISPCB(COUT, src, DARK_CYAN, '[');
-	this->_username = cmd.username();
-	if (!cmd.modes().empty()) //further check later, or a function to set modes better.
-		this->_modes = cmd.modes()[0] % 48;
-	this->_realname = cmd.realname();
+Client::Client(Connection *&src, UserCommand const &cmd) : inherited(*src), modes(CLIENT_NOMODE) {
+	isClient(true);
+	username = cmd.username();
+	realname = cmd.realname();
 	delete src;
+	src = this;
 }
 
 // __________Member functions____________
-bool				Client::isRegistered(void) const { return (!this->_nickname.empty() && !this->_username.empty() && !this->_realname.empty()); }
-std::string const	Client::fullId(void) const {
-	std::ostringstream ss;
-
-	if (!this->isRegistered())
-		return std::string();
-	ss << this->getNickname() << '!' << this->getUsername() << '@' << this->hostname();
-	return (ss.str());
-}
-
-std::string const	Client::name(void) const {
-	if (this->isRegistered())
-		return this->getNickname();
+std::string const	&Client::name(void) const {
+	if (isRegistered())
+		return nickname;
 	else {
-		if (this->getNickname().empty())
-			return this->getUsername();
+		if (nickname.empty())
+			return username;
 		else
-			return this->getNickname();
+			return nickname;
 	}
 }
 
-bool				Client::isOperator(void) const { return ((this->_status >> BIT_OPERATOR) & 1); }
-void				Client::setOperator(void) { this->setStatusFlag(CONX_OPERATOR); }
-void				Client::unsetOperator(void) { this->unsetStatusFlag(CONX_OPERATOR); }
+std::string const	Client::fullId(void) const {
+	std::ostringstream ss;
 
-// ____________Setter / Getter___________
-// _nickname
-std::string const	Client::getNickname(void) const { return this->_nickname; }
-void				Client::setNickname(std::string const &src) { this->_nickname = src;}
+	if (!isRegistered())
+		return std::string();
+	ss << nickname << '!' << username << '@' << hostname();
+	return (ss.str());
+}
 
-// _username
-std::string const	Client::getUsername(void) const { return this->_username; }
-void				Client::setUsername(std::string const &src) { this->_username = src; }
+bool				Client::compare(Client &cmp) const {
+	if (!nickname.compare(cmp.nickname) &&
+		!username.compare(cmp.username) &&
+		!realname.compare(cmp.realname)) {
+		return false;
+	}
+	return true;
+}
 
-// _realname
-std::string const	Client::getRealname(void) const { return this->_realname; }
-void				Client::setRealname(std::string const &src) { this->_realname = src; }
+bool				Client::compare(Client *cmp) const {
+	if (!cmp)
+		return true;
+	if (!nickname.compare(cmp->nickname) &&
+		!username.compare(cmp->username) &&
+		!realname.compare(cmp->realname)) {
+		return false;
+	}
+	return true;
+}
 
-// _modes
-bool				Client::checkMode(unsigned char mode) const { return (this->_modes & mode); }
-unsigned char 		Client::getModes(void) const { return this->_modes; }
-void				Client::setModes(unsigned char src) { this->_modes = src; }
+bool				Client::isAway(void) const			{ return (modes & CLIENT_AWAY); }
+bool				Client::isInvisible(void) const		{ return (modes & CLIENT_INVISIBLE); }
+bool				Client::isWallops(void) const		{ return (modes & CLIENT_WALLOPS); }
+bool				Client::isRestricted(void) const	{ return (modes & CLIENT_RESTRICTED); }
+bool				Client::isOperator(void) const		{ return (modes & CLIENT_OPERATOR); }
+bool				Client::isLocalop(void) const		{ return (modes & CLIENT_LOCALOP); }
+
+void				Client::isAway(bool set)			{ applyMode(CLIENT_AWAY, set); }
+void				Client::isInvisible(bool set)		{ applyMode(CLIENT_INVISIBLE, set); }
+void				Client::isWallops(bool set)			{ applyMode(CLIENT_WALLOPS, set); }
+void				Client::isRestricted(bool set)		{ applyMode(CLIENT_RESTRICTED, set); }
+void				Client::isOperator(bool set)		{ applyMode(CLIENT_OPERATOR, set); }
+void				Client::isLocalop(bool set)			{ applyMode(CLIENT_LOCALOP, set); }
+
+bool				Client::checkMode(unsigned short mode) const { return (modes & mode); }
+
+bool				Client::isRegistered(void) const { return (!nickname.empty() && !username.empty() && !realname.empty()); }
+bool				Client::isOnChan(std::string const &chan) const {
+	return ((std::find(chans.begin(), chans.end(), chan) != chans.end() ? true : false));
+}
+bool				Client::hasChans(void) const { return !(chans.empty()); }
+void				Client::addChanToList(std::string const &chan) { chans.push_back(chan); }
+void				Client::removeChanFromList(std::string const &chan) { chans.remove(chan); }
+
+void				Client::applyModeFlag(char flag, bool set) {
+	std::string	const flags = CLIENT_MODE_FLAGS;
+
+	if (flags.find(flag) == std::string::npos)
+		throw (Command::InvalidCommandException(ERR_UMODEUNKNOWNFLAG));
+	if (flag == 'a' || (flag == 'o' && set))
+		throw (Command::InvalidCommandException(ERR_DISCARDCOMMAND));
+	if (flag == 'i')
+		isInvisible(set);
+	if (flag == 'w')
+		isWallops(set);
+	if (flag == 'r')
+		isRestricted(set);
+	if (flag == 'o')
+		isOperator(set);
+}
+
+// ########################################
+// 				   PRIVATE
+// ########################################
+
+void				Client::applyMode(unsigned short mode, bool set) {
+	if (!set)
+		modes ^= ((modes ^ mode) > modes ? CLIENT_NOMODE : mode);
+	else
+		modes |= mode;
+}
+
+// ########################################
+// 					DEBUG
+// ########################################
 
 std::ostream		&operator<<(std::ostream &flux, Client const &src) {
 	flux << static_cast<Connection const &>(src);
-	flux << "[" << src.getNickname() << "]";
-	flux << "[" << src.getUsername() << "]";
-	flux << "[" << src.getRealname() << "]";
+	flux << "M[";
+	flux << (src.isAway() ? "1" : "0");
+	flux << (src.isInvisible() ? "1" : "0");
+	flux << (src.isWallops() ? "1" : "0");
+	flux << (src.isRestricted() ? "1" : "0");
+	flux << (src.isOperator() ? "1" : "0");
+	flux << (src.isLocalop() ? "1" : "0");
+	flux << "]n[" << src.nickname << "]";
+	flux << "u[" << src.username << "]";
+	flux << "r[" << src.realname << "]";
+	if (src.hasChans()) {
+		std::cout << std::endl << "\t\tchans -> ";
+		for (std::list<std::string>::const_iterator it = src.chans.begin(); it != src.chans.end(); it++)
+			std::cout << (*it) << " ";
+	}
 	return flux;
 }

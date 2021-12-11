@@ -9,6 +9,8 @@
 
 #include "Message.hpp"
 
+#define READ_DELAY (CLOCKS_PER_SEC * 0.2f)
+
 class SockStream {
 public: // #####################################################################
 

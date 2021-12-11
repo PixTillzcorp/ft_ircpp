@@ -107,18 +107,22 @@ TESTDIR = tests_exec
 
 INCDIR = incs
 
-HEADERS = $(addprefix $(INCDIR)/,	Connection.hpp	\
-									FdSet.hpp		\
-									Message.hpp		\
-									ServerInfo.hpp	\
-									SockInfo.hpp	\
-									SockStream.hpp	\
-									Command.hpp		\
-									CommandLib.hpp	\
-									Server.hpp		\
-									Client.hpp)
+HEADERS =	Connection.hpp	\
+			FdSet.hpp		\
+			Message.hpp		\
+			ServerInfo.hpp	\
+			AddrInfo.hpp	\
+			SockInfo.hpp	\
+			SockStream.hpp	\
+			Command.hpp		\
+			CommandLib.hpp	\
+			Server.hpp		\
+			Client.hpp		\
+			Channel.hpp
 
 SRCO_TEST_TEST = test_test.o
+
+SRCO_TEST_QUICK = test_quick.o
 
 SRCO_TEST_FDSET =	FdSet.o		\
 					test_fdset.o
@@ -127,14 +131,17 @@ SRCO_TEST_MESSAGE =	Message.o		\
 					test_message.o
 
 SRCO_TEST_SOCKSTREAM =	Message.o		\
+						AddrInfo.o		\
 						SockInfo.o		\
 						SockStream.o	\
 						test_sockstream.o
 
 SRCO_TEST_SOCKINFO =	SockInfo.o		\
+						AddrInfo.o		\
 						test_sockinfo.o
 
 SRCO_TEST_CONNECTION = 	Message.o		\
+						AddrInfo.o		\
 						SockInfo.o		\
 						SockStream.o	\
 						Connection.o	\
@@ -143,6 +150,7 @@ SRCO_TEST_CONNECTION = 	Message.o		\
 
 SRCO_TEST_SELECTMODULE = 	Message.o		\
 							FdSet.o			\
+							AddrInfo.o		\
 							SockInfo.o		\
 							SockStream.o	\
 							Connection.o	\
@@ -152,6 +160,7 @@ SRCO_TEST_SELECTMODULE = 	Message.o		\
 
 SRCO_TEST_LOCALSERVER = 	Message.o		\
 							FdSet.o			\
+							AddrInfo.o		\
 							SockInfo.o		\
 							SockStream.o	\
 							Connection.o	\
@@ -168,6 +177,7 @@ SRCO_TEST_COMMAND =	Message.o		\
 
 SRCO_SVR = 	Message.o		\
 			FdSet.o			\
+			AddrInfo.o		\
 			SockInfo.o		\
 			SockStream.o	\
 			Connection.o	\
@@ -176,13 +186,14 @@ SRCO_SVR = 	Message.o		\
 			CommandLib.o	\
 			SelectModule.o	\
 			LocalServer.o	\
+			Channel.o		\
 			main.o
 
 # SRCO_CLT =	$(addprefix $(OBJDIR)/, client_main.o)
 
 CXX = g++
 
-CXXFLAGS = -std=c++98 -pedantic-errors
+CXXFLAGS = -std=c++98 -pedantic-errors -I$(INCDIR)
 
 ifeq ($(MAKEFILE_MODE), DEBUG)
 	CXXFLAGS += -g
@@ -229,12 +240,17 @@ re_done:
 #																			   #
 # **************************************************************************** #
 
-$(OBJDIR)/%.o: %.cpp
+$(OBJDIR): ; @mkdir -p $@
+
+$(OBJDIR)/%.o: %.cpp %.hpp | $(OBJDIR)
 	@ $(eval DONE = $(shell echo $(DONE) + 1 | bc ))
 	@ echo "\r$(PURPLE)[$(NORMAL)$(BAR)$(EMPTY)$(PURPLE)] {$(NORMAL)$(PRCENT).$(REST)$(PURPLE)}   $(NORMAL)\c"
-	@ mkdir -p $(OBJDIR)
-	@ $(CXX) $(CXXFLAGS) -c $<
-	@ mv ./$(notdir $@) ./$(OBJDIR)/
+	@ $(CXX) $(CXXFLAGS) -c -o $@ $<
+	
+$(OBJDIR)/%.o: %.cpp | $(OBJDIR)
+	@ $(eval DONE = $(shell echo $(DONE) + 1 | bc ))
+	@ echo "\r$(PURPLE)[$(NORMAL)$(BAR)$(EMPTY)$(PURPLE)] {$(NORMAL)$(PRCENT).$(REST)$(PURPLE)}   $(NORMAL)\c"
+	@ $(CXX) $(CXXFLAGS) -c -o $@ $<
 
 # **************************************************************************** #
 #																			   #
@@ -285,7 +301,7 @@ clean: cleared
 fclean: clean full_clear
 	@ rm -rf ./$(OBJDIR)
 	@ rm -rf ./$(TESTDIR)
-	@ rm -f $(SERVER)
+	@ rm -f $(NAME)
 
 re: re_init fclean all re_done
 

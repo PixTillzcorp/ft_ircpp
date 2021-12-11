@@ -76,6 +76,10 @@
 
 /*----------------------------------------------------------------------------*/
 
+// DDISP = Double Display
+// LDISP = Legend Display
+// ADISP = Around Display
+
 /*----------------------------------------------------------------------------*/
 
 #define COUT std::cout
@@ -90,6 +94,8 @@
 #define DEBUG_DISP_NOENDL(f, x) f _VAR(x)
 #define DEBUG_DDISP(f, x, y) f _VAR(x) _VAR_(y) ENDL
 #define DEBUG_DDISP_NOENDL(f, x, y) f _VAR(x) _VAR(y)
+#define DEBUG_ADISP(f, x, y, z) f _VAR(x) _VAR(y) _VAR_(z) ENDL
+#define DEBUG_ADISP_NOENDL(f, x, y, z) f _VAR(x) _VAR(y) _VAR_(z)
 
 /* ~ */
 
@@ -101,6 +107,8 @@
 #define DEBUG_DDISPB_NOENDL(f, x, y, b) DEBUG_DDISP_NOENDL(f, BRACKET(x,b), BRACKET(y,b))
 #define DEBUG_LDISPB(f, x, y, b) DEBUG_DDISP(f, x, BRACKET(y,b))
 #define DEBUG_LDISPB_NOENDL(f, x, y, b) DEBUG_DDISP_NOENDL(f, x, BRACKET(y,b))
+#define DEBUG_ADISPB(f, x, y, z, b) DEBUG_ADISP(f, x, BRACKET(y,b), z)
+#define DEBUG_ADISPB_NOENDL(f, x, y, z, b) DEBUG_ADISP_NOENDL(f, x, BRACKET(y,b), z)
 
 /* ~ */
 
@@ -110,6 +118,8 @@
 #define DEBUG_DISPC_NOENDL(f, x, c) DEBUG_DISP_NOENDL(f, COLORED(x, c))
 #define DEBUG_DDISPC(f, x, y, c) DEBUG_DDISP(f, COLORED(x, c), COLORED(y, c))
 #define DEBUG_DDISPC_NOENDL(f, x, y, c) DEBUG_DDISP_NOENDL(f, COLORED(x, c), COLORED(y, c))
+#define DEBUG_ADISPC(f, x, y, z, c) DEBUG_ADISP(f, COLORED(x, c), COLORED(y, c), COLORED(z, c))
+#define DEBUG_ADISPC_NOENDL(f, x, y, z, c) DEBUG_ADISP_NOENDL(f, COLORED(x, c), COLORED(y, c), COLORED(z, c))
 
 /* ~ */
 
@@ -119,6 +129,8 @@
 #define DEBUG_DDISPCB_NOENDL(f, x, y, c, b) DEBUG_DDISP_NOENDL(f, COLORED(BRACKET(x, b), c), COLORED(BRACKET(y, b), c))
 #define DEBUG_LDISPCB(f, x, y, c, b) DEBUG_DDISP(f, COLORED(x, c), COLORED(BRACKET(y, b), c))
 #define DEBUG_LDISPCB_NOENDL(f, x, y, c, b) DEBUG_DDISP_NOENDL(f, COLORED(x, c), COLORED(BRACKET(y, b), c))
+#define DEBUG_ADISPCB(f, x, y, z, c, b) DEBUG_ADISP(f, COLORED(x, c), COLORED(BRACKET(y, b), c), COLORED(z, c))
+#define DEBUG_ADISPCB_NOENDL(f, x, y, z, c, b) DEBUG_ADISP_NOENDL(f, COLORED(x, c), COLORED(BRACKET(y, b), c), COLORED(z, c))
 
 /* ~ */
 

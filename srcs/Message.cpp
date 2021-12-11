@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Message.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-11 16:27:23 }--------------------------**
-**----- Updated -------------{ 2021-09-27 18:10:37 }--------------------------**
+**----- Updated -------------{ 2021-12-09 18:55:48 }--------------------------**
 ********************************************************************************
 */
 
@@ -23,26 +23,32 @@
 
 // ____________Canonical Form____________
 Message::~Message(void) { return; }
-Message::Message(void) : _content(""), _received(false) { return; }
-Message::Message(Message const &src) { *this = src; }
-Message			&Message::operator=(Message const &src) {
-	this->_content = src.getContent();
-	this->_received = src.isReceived();
+Message::Message(void) : content(""), _received(false) { return; }
+Message::Message(Message const &cpy) :
+	content(cpy.content), _received(cpy.received()) { return; }
+Message			&Message::operator=(Message const &cpy) {
+	content = cpy.content;
+	_received = cpy.received();
 	return *this;
 }
 
 // _____________Constructor______________
-Message::Message(std::string const &content) : _content(content) { 
-	this->received();
+Message::Message(std::string const &content) : content(content) { 
+	received(true);
 	return;
 }
 
 // __________Member functions____________
-bool			Message::isWritten(void) { return (this->_received && this->_content.empty()); }
-size_t			Message::load(std::string const &src) {
-	if (!this->_received)
+bool			Message::isWritten(void) { return (_received && content.empty()); }
+
+size_t			Message::load(std::string &src) {
+	if (!_received && !isFull())
 	{
-		this->_content.append(src);
+		src.erase(std::remove_if(src.begin(), src.end(), isNotGraph), src.end());
+		if (content.size() + src.size() >= MMAX_LEN)
+			content.append(src.substr(0, MMAX_LEN - content.size()));
+		else
+			content.append(src);
 		return (src.size());
 	}
 	return (0);
@@ -50,40 +56,44 @@ size_t			Message::load(std::string const &src) {
 std::string		Message::unload(size_t const n) {
 	std::string	tmp;
 
-	if (!this->isWritten() && n)
+	if (!isWritten() && n)
 	{
-		tmp = this->_content.substr(0, n);
-		this->_content.erase(0, n);
-		if (this->isWritten() && tmp.compare("\n")) {
+		tmp = content.substr(0, n);
+		content.erase(0, n);
+		if (isWritten() && tmp.compare("\n")) {
 			if (tmp.size() < n)
 				tmp.append("\n");
 			else
-				this->_content.append("\n");
+				content.append("\n");
 		}
 		return (tmp);
 	}
 	return ("");
 }
-bool			Message::compare(std::string const &sample) const { return this->_content.compare(sample); }
-
-// ____________Setter / Getter___________
-// _content
-std::string		Message::getContent(void) const { return this->_content; }
-
-// _received
-bool			Message::isReceived(void) const { return this->_received; }
-void			Message::received(void) { this->_received = true; }
-
+bool			Message::compare(std::string const &sample) const { return content.compare(sample); }
+bool			Message::empty(void) const { return content.empty(); }
 void			Message::purify(void) {
-	if (this->isReceived()) {
-		this->_content.erase(std::remove(this->_content.begin(), this->_content.end(), '\r'), this->_content.end());
+	if (received()) {
+		content.erase(std::remove(content.begin(), content.end(), '\r'), content.end());
 	}
 }
+bool			Message::isFull(void) const { return (content.size() >= MMAX_LEN); }
+
+// ____________Setter / Getter___________
+bool			Message::received(void) const { return _received; }
+void			Message::received(bool set) { _received = set; }
+
+// ########################################
+// 				   PRIVATE
+// ########################################
+
+bool			Message::isNotGraph(int c) { return (c == 32 ? false : !isgraph(c)); }
+
 // ########################################
 // 					DEBUG
 // ########################################
 
 std::ostream	&operator<<(std::ostream &flux, Message const &src) {
-	flux << src.getContent();
+	flux << src.content;
 	return flux;
 }
