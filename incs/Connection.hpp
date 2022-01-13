@@ -1,19 +1,22 @@
 #ifndef FT_IRCPP_CONNECTION_HPP
 #define FT_IRCPP_CONNECTION_HPP
 
-#include "../incs/CommandLib.hpp"
-#include "../incs/SockStream.hpp"
-#include "../incs/SockInfo.hpp"
+#include "CommandLib.hpp"
+#include "SockStream.hpp"
+#include "SockInfo.hpp"
+
+#include <unistd.h>
 
 #define MAX_PENDING_CONNECTION 15
 #define NO_SOCK -1
 #define NO_LINK nullptr
 
+#define CONX_PENDING	USHRT_MAX
 #define CONX_LOCAL		128
 #define CONX_SERVER		64
 #define CONX_CLIENT		32
 #define CONX_SERVICE	16
-#define CONX_PENDING	8
+#define CONX_CONNECT	8
 #define CONX_IPV6		4
 #define CONX_AUTHEN		2
 #define CONX_FINISH		1
@@ -34,9 +37,9 @@ public:
 	Connection &operator=(Connection const &src);
 
 	// ____________Constructors______________
-	Connection(std::string const &port, u_int16_t family) throw(Connection::ConxInit);	// socket/bind/listen
-	Connection(int lsock) throw(Connection::ConxInit);									// accept
-	Connection(Connection *link, unsigned short status, size_t hop);					// link
+	Connection(std::string const &host, std::string const &port, u_int16_t family) throw(ConxInit);	// socket/connect/bind/listen
+	Connection(int lsock) throw(ConxInit);															// accept
+	Connection(Connection *link, unsigned short status, size_t hop);								// link
 
 	// __________Member functions____________
 	std::string const			&hostname(void) const;
@@ -50,13 +53,14 @@ public:
 	void	clearMessages(void);
 	void	send(Message const &msg);
 	void	send(Command const &cmd);
-	Message *getLastMessage(void);
-	Command *getLastCommand(void);
+	Message getLastMessage(void);
+	Command getLastCommand(void);
 
 	bool	isLocal(void) const;
 	bool	isServer(void) const;
 	bool	isClient(void) const;
 	bool	isService(void) const;
+	bool	isConnect(void) const;
 	bool	isIPv6(void) const;
 	bool	isAuthentified(void) const;
 	bool	isFinished(void) const;
@@ -67,10 +71,14 @@ public:
 	void	isServer(bool set);
 	void	isClient(bool set);
 	void	isService(bool set);
+	void	isConnect(bool set);
 	void	isIPv6(bool set);
 	void	isAuthentified(bool set);
 	void	isFinished(bool set);
 
+	void	end(void) throw(FailClose);
+
+	// ______________Exceptions______________
 	typedef class ConnectionInitException : public std::exception { // socket setup failed
 	public:
 		typedef std::exception inherited;
@@ -86,6 +94,16 @@ public:
 	private:
 		ConnectionInitException();
 	} ConxInit;
+
+
+	typedef class CloseSocketException : public std::exception {
+	public:
+		virtual ~CloseSocketException(void) throw();
+		CloseSocketException(void);
+		CloseSocketException(CloseSocketException const &src);
+		CloseSocketException &operator=(CloseSocketException const &src);
+		virtual const char *what() const throw();
+	} FailClose;
 
 	bool	checkStatus(unsigned short check) const;
 	void	applyFlag(unsigned short flag, bool set);

@@ -36,7 +36,7 @@ public: // #####################################################################
 	Channel(Client *creator, std::string const &name);
 
 	// __________Member functions____________
-	unsigned short			join(Client *joiner, JoinCommand const &cmd);
+	unsigned short			join(Client *joiner);
 	void					leave(Client *leaver);
 	bool					empty(void) const;
 	bool					hasTopic(void);
@@ -60,31 +60,31 @@ public: // #####################################################################
 	void					applyModeFlag(Client *sender, char flag, bool set);
 	void					applyUserModeFlag(Client *sender, Client *target, char flag, bool set);
 
-	bool isAnonymous(void) const	 { return (this->_modes & CHAN_ANONYMOUS); }
-	bool isInviteonly(void) const	 { return (this->_modes & CHAN_INVITEONLY); }
-	bool isModerated(void) const	 { return (this->_modes & CHAN_MODERATED); }
-	bool isNoOutMessage(void) const	 { return (this->_modes & CHAN_NOOUTMESSAGE); }
-	bool isQuiet(void) const		 { return (this->_modes & CHAN_QUIET); }
-	bool isPrivate(void) const		 { return (this->_modes & CHAN_PRIVATE); }
-	bool isSecret(void) const		 { return (this->_modes & CHAN_SECRET); }
-	bool isServerReop(void) const	 { return (this->_modes & CHAN_SERVERREOP); }
-	bool isTopic(void) const		 { return (this->_modes & CHAN_TOPIC); }
-	bool isKey(void) const			 { return (this->_modes & CHAN_KEY); }
-	bool isUserLimit(void) const	 { return (this->_modes & CHAN_USERLIMIT); }
-	bool isLocalChannel(void) const	 { return (this->_modes & CHAN_LOCALCHANNEL); }
+	bool isAnonymous(void) const;
+	bool isInviteonly(void) const;
+	bool isModerated(void) const;
+	bool isNoOutMessage(void) const;
+	bool isQuiet(void) const;
+	bool isPrivate(void) const;
+	bool isSecret(void) const;
+	bool isServerReop(void) const;
+	bool isTopic(void) const;
+	bool isKey(void) const;
+	bool isUserLimit(void) const;
+	bool isLocalChannel(void) const;
 
-	void applyAnonymous(bool set)	 { this->applyMode(CHAN_ANONYMOUS, set); }
-	void applyInviteonly(bool set)	 { this->applyMode(CHAN_INVITEONLY, set); }
-	void applyModerated(bool set)	 { this->applyMode(CHAN_MODERATED, set); }
-	void applyNoOutMessage(bool set) { this->applyMode(CHAN_NOOUTMESSAGE, set); }
-	void applyQuiet(bool set)		 { this->applyMode(CHAN_QUIET, set); }
-	void applyPrivate(bool set)		 { this->applyMode(CHAN_PRIVATE, set); }
-	void applySecret(bool set)		 { this->applyMode(CHAN_SECRET, set); }
-	void applyServerReop(bool set)	 { this->applyMode(CHAN_SERVERREOP, set); }
-	void applyTopic(bool set)		 { this->applyMode(CHAN_TOPIC, set); }
-	void applyKey(bool set)			 { this->applyMode(CHAN_KEY, set); }
-	void applyUserLimit(bool set)	 { this->applyMode(CHAN_USERLIMIT, set); }
-	void applyLocalChannel(bool set) { this->applyMode(CHAN_LOCALCHANNEL, set); }
+	void applyAnonymous(bool set);
+	void applyInviteonly(bool set);
+	void applyModerated(bool set);
+	void applyNoOutMessage(bool set);
+	void applyQuiet(bool set);
+	void applyPrivate(bool set);
+	void applySecret(bool set);
+	void applyServerReop(bool set);
+	void applyTopic(bool set);
+	void applyKey(bool set);
+	void applyUserLimit(bool set);
+	void applyLocalChannel(bool set);
 
 	// ____________Setter / Getter___________
 	// _name

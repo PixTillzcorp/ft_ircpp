@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Channel.cpp }----------------------------------**
 **----- Created -------------{ 2021-10-11 15:03:32 }--------------------------**
-**----- Updated -------------{ 2021-12-10 05:34:18 }--------------------------**
+**----- Updated -------------{ 2022-01-10 07:30:32 }--------------------------**
 ********************************************************************************
 */
 
@@ -50,7 +50,7 @@ Channel::Channel(Client *creator, std::string const &name) :_creator(creator),
 }
 
 // __________Member functions____________
-unsigned short	Channel::join(Client *joiner, JoinCommand const &cmd) {
+unsigned short	Channel::join(Client *joiner) {
 	// if (isBanned(joiner->name())) {
 	// 	if (isInviteonly()) {
 	// 		if (!isInvited(joiner->name()))
@@ -61,11 +61,11 @@ unsigned short	Channel::join(Client *joiner, JoinCommand const &cmd) {
 	// }
 	if (!isOnChan(joiner)) {
 		_members.push_back(joiner);
-		joiner->addChanToList(getName());
-		broadcast(nullptr, JoinCommand(joiner->fullId(), cmd.target()));
+		joiner->addChanToList(_name);
+		broadcast(nullptr, JoinCommand(joiner->fullId(), _name));
 	}
 	else
-		throw (Command::InvalidCommandException(ERR_DISCARDCOMMAND));
+		return 1; //already on chan
 	return 0;
 }
 
@@ -83,11 +83,13 @@ bool			Channel::empty(void) const { return (!_creator); }
 bool			Channel::hasTopic(void) { return !(_topic.empty()); }
 void			Channel::namesList(std::list<std::string> &lst) const {
 	lst.clear();
-	lst.push_back("!" + _creator->nickname);
+	lst.push_back("@" + _creator->nickname);
 	for (std::list<Client *>::const_iterator it = _operators.begin(); it != _operators.end(); it++)
 		lst.push_back("@" + (*it)->nickname);
 	for (std::list<Client *>::const_iterator it = _members.begin(); it != _members.end(); it++) {
-		if (isModerated() && canTalk((*it)))
+		if ((*it)->isOperator())
+			lst.push_back("@" + (*it)->nickname);
+		else if (isModerated() && canTalk((*it)))
 			lst.push_back("+" + (*it)->nickname);
 		else
 			lst.push_back((*it)->nickname);
@@ -112,11 +114,11 @@ void			Channel::send(Client *sender, PrivmsgCommand const &cmd) {
 }
 
 void			Channel::updateClients(Client *sender, Command const &cmd) {
-	if (sender) {
-		if (cmd == "NICK" && isOnChan(sender))
+	if (sender && isOnChan(sender)) {
+		if (cmd == "NICK")
 			broadcast(sender, NickCommand(sender->fullId(), cmd.args));
-		else if ((cmd == "QUIT" || cmd == "PART") && isOnChan(sender)) {
-			broadcast(sender, Command(sender->fullId(), cmd.command, cmd.args));
+		else if ((cmd == "QUIT" || cmd == "PART")) {
+			broadcast(nullptr, Command(sender->fullId(), cmd.command, cmd.args));
 			leave(sender);
 		}
 	}
@@ -175,6 +177,32 @@ bool			Channel::checkVoice(std::string const &voice) const {
 		return true;
 	return false;
 }
+
+bool Channel::isAnonymous(void) const		{ return (this->_modes & CHAN_ANONYMOUS); }
+bool Channel::isInviteonly(void) const		{ return (this->_modes & CHAN_INVITEONLY); }
+bool Channel::isModerated(void) const		{ return (this->_modes & CHAN_MODERATED); }
+bool Channel::isNoOutMessage(void) const	{ return (this->_modes & CHAN_NOOUTMESSAGE); }
+bool Channel::isQuiet(void) const			{ return (this->_modes & CHAN_QUIET); }
+bool Channel::isPrivate(void) const			{ return (this->_modes & CHAN_PRIVATE); }
+bool Channel::isSecret(void) const			{ return (this->_modes & CHAN_SECRET); }
+bool Channel::isServerReop(void) const		{ return (this->_modes & CHAN_SERVERREOP); }
+bool Channel::isTopic(void) const			{ return (this->_modes & CHAN_TOPIC); }
+bool Channel::isKey(void) const				{ return (this->_modes & CHAN_KEY); }
+bool Channel::isUserLimit(void) const		{ return (this->_modes & CHAN_USERLIMIT); }
+bool Channel::isLocalChannel(void) const	{ return (this->_modes & CHAN_LOCALCHANNEL); }
+
+void Channel::applyAnonymous(bool set)		{ this->applyMode(CHAN_ANONYMOUS, set); }
+void Channel::applyInviteonly(bool set)		{ this->applyMode(CHAN_INVITEONLY, set); }
+void Channel::applyModerated(bool set)		{ this->applyMode(CHAN_MODERATED, set); }
+void Channel::applyNoOutMessage(bool set)	{ this->applyMode(CHAN_NOOUTMESSAGE, set); }
+void Channel::applyQuiet(bool set)			{ this->applyMode(CHAN_QUIET, set); }
+void Channel::applyPrivate(bool set)		{ this->applyMode(CHAN_PRIVATE, set); }
+void Channel::applySecret(bool set)			{ this->applyMode(CHAN_SECRET, set); }
+void Channel::applyServerReop(bool set)		{ this->applyMode(CHAN_SERVERREOP, set); }
+void Channel::applyTopic(bool set)			{ this->applyMode(CHAN_TOPIC, set); }
+void Channel::applyKey(bool set)			{ this->applyMode(CHAN_KEY, set); }
+void Channel::applyUserLimit(bool set)		{ this->applyMode(CHAN_USERLIMIT, set); }
+void Channel::applyLocalChannel(bool set)	{ this->applyMode(CHAN_LOCALCHANNEL, set); }
 
 void			Channel::applyModeFlag(Client *sender, char flag, bool set) {
 	std::string	const flags = CHAN_MODE_FLAGS;

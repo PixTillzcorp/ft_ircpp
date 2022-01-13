@@ -11,11 +11,11 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2021-12-07 03:51:05 }--------------------------**
+**----- Updated -------------{ 2021-12-15 19:54:29 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/SelectModule.hpp"
+#include "SelectModule.hpp"
 
 // ########################################
 // 					PUBLIC
@@ -63,11 +63,13 @@ void	SelectModule::call(std::list<Connection *> &conxs) {
 			this->_rfds.removeFd((*it)->sock());
 		if ((*it)->hasOutputMessage())
 			this->_wfds.addFd((*it)->sock());
-		else if ((*it)->isFinished()) { // close conx
+		else if ((*it)->isFinished()) { // conx we need to end
 			this->_mfds.removeFd((*it)->sock());
-			if (close((*it)->sock()) == -1) // if not a link
-				throw (SelectModule::CloseSocketException());
-			delete (*it);
+			try {
+				(*it)->end(); // close then delete itself
+			} catch (Connection::FailClose &ex) {
+				std::cout << ex.what() << std::endl;
+			}
 			conxs.erase(it--);
 		}
 	}
@@ -132,15 +134,4 @@ SelectModule::SelectException &SelectModule::SelectException::operator=(SelectEx
 }
 const char *SelectModule::SelectException::what() const throw() {
 	return ("select() function failed.");
-}
-
-SelectModule::CloseSocketException::~CloseSocketException(void) throw() { return; }
-SelectModule::CloseSocketException::CloseSocketException(void) { return; }
-SelectModule::CloseSocketException::CloseSocketException(CloseSocketException const &src) : std::exception(static_cast<std::exception const &>(src)) { return; }
-SelectModule::CloseSocketException &SelectModule::CloseSocketException::operator=(CloseSocketException const &src) {
-	static_cast<std::exception &>(*this) = static_cast<std::exception const &>(src);
-	return *this;
-}
-const char *SelectModule::CloseSocketException::what() const throw() {
-	return ("close() function failed.");
 }

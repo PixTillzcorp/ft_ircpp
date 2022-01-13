@@ -21,7 +21,7 @@ public:
 
 	// _____________Constructor______________
 	PassCommand(Command const &src);
-	PassCommand(std::list<std::string> const &args);
+	PassCommand(std::string const &pass);
 
 	// __________Member functions____________
 	virtual void		isValid(void) const throw(Command::InvalidCommandException);
@@ -79,7 +79,7 @@ public:
 	// _____________Constructor______________
 	NickCommand(Command const &src);
 	NickCommand(std::string const &prefix, std::string const &nickname);
-	NickCommand(std::string const &prefix, std::list<std::string> const &args);
+	NickCommand(std::string const &prefix, inherited::arglist const &args);
 	
 	// __________Member functions____________
 	virtual void		isValid(void) const throw(Command::InvalidCommandException);
@@ -103,7 +103,7 @@ public:
 
 	// _____________Constructor______________
 	UserCommand(Command const &src);
-	UserCommand(std::list<std::string> const &args);
+	UserCommand(inherited::arglist const &args);
 	UserCommand(std::string const &username, std::string const &modes, std::string const &realname);
 	
 	// __________Member functions____________
@@ -132,7 +132,7 @@ public:
 	// _____________Constructor______________
 	QuitCommand(Command const &src);
 	QuitCommand(std::string const &prefix, std::string const &msg);
-	QuitCommand(std::string const &prefix, std::list<std::string> const &args);
+	QuitCommand(std::string const &prefix, inherited::arglist const &args);
 	
 	// __________Member functions____________
 	virtual void		isValid(void) const throw(Command::InvalidCommandException);
@@ -156,7 +156,7 @@ public:
 
 	// _____________Constructor______________
 	PrivmsgCommand(Command const &src);
-	PrivmsgCommand(std::string const &prefix, std::list<std::string> const &args);
+	PrivmsgCommand(std::string const &prefix, inherited::arglist const &args);
 	PrivmsgCommand(std::string const &prefix, std::string const &target, std::string const &msg);
 	
 	// __________Member functions____________
@@ -182,7 +182,7 @@ public:
 
 	// _____________Constructor______________
 	NoticeCommand(Command const &src);
-	NoticeCommand(std::string const &prefix, std::list<std::string> const &args);
+	NoticeCommand(std::string const &prefix, inherited::arglist const &args);
 	NoticeCommand(std::string const &prefix, std::string const &target, std::string const &msg);
 	
 	// __________Member functions____________
@@ -356,7 +356,7 @@ public:
 
 	// _____________Constructor______________
 	PartCommand(Command const &src);
-	PartCommand(std::string const &prefix, std::list<std::string> const &args);
+	PartCommand(std::string const &prefix, inherited::arglist const &args);
 	PartCommand(std::string const &prefix, std::string const &target, std::string const &msg);
 	
 	// __________Member functions____________
@@ -382,7 +382,7 @@ public:
 
 	// _____________Constructor______________
 	TopicCommand(Command const &src);
-	TopicCommand(std::string const &prefix, std::list<std::string> const &args);
+	TopicCommand(std::string const &prefix, inherited::arglist const &args);
 	TopicCommand(std::string const &prefix, std::string const &target, std::string const &topic);
 	
 	// __________Member functions____________
@@ -408,7 +408,7 @@ public:
 
 	// _____________Constructor______________
 	OperCommand(Command const &src);
-	OperCommand(std::string const &prefix, std::list<std::string> const &args);
+	OperCommand(std::string const &prefix, inherited::arglist const &args);
 	OperCommand(std::string const &prefix, std::string const &name, std::string const &password);
 	
 	// __________Member functions____________
@@ -458,7 +458,7 @@ public:
 
 	// _____________Constructor______________
 	ModeCommand(Command const &src);
-	ModeCommand(std::string const &prefix, std::list<std::string> const &args);
+	ModeCommand(std::string const &prefix, inherited::arglist const &args);
 	ModeCommand(std::string const &prefix, std::string const &chan);
 	ModeCommand(std::string const &prefix, std::string const &target, std::string const &mode);
 	ModeCommand(std::string const &prefix, std::string const &chan, std::string const &mode, std::string const &nick);
@@ -575,35 +575,36 @@ private:
 // 					SERVER
 // ########################################
 
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// class ServerCommand : public Command {
-// public:
-// 	// ____________Canonical Form____________
-// 	virtual ~ServerCommand(void);
-// 	// ServerCommand(void);
-// 	ServerCommand(ServerCommand const &cpy);
-// 	ServerCommand &operator=(ServerCommand const &cpy);
+class ServerCommand : public Command {
+public:
+	typedef Command inherited;
 
-// 	// _____________Constructor______________
-// 	ServerCommand(std::string const prefix, std::list<std::string> const &args);
-// 	ServerCommand(std::list<std::string> const &args);
-// 	ServerCommand(std::string const prefix, ServerCommand const &cmd);
-// 	ServerCommand(Command const &src);
+	// ____________Canonical Form____________
+	virtual ~ServerCommand(void);
+	// ServerCommand(void);
+	ServerCommand(ServerCommand const &cpy);
+	ServerCommand &operator=(ServerCommand const &cpy);
 
-// 	virtual bool		isValid(void) const;
+	// _____________Constructor______________
+	ServerCommand(std::string const prefix, inherited::arglist const &args);
+	ServerCommand(inherited::arglist const &args);
+	// ServerCommand(std::string const prefix, ServerCommand const &cmd);
+	ServerCommand(Command const &src);
 
-// 	std::string servername;
-// 	int hopcount;
-// 	std::string token;
-// 	std::string info;
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(InvalidCommandException);
+	std::string			servername(void) const;
+	std::string			hopcount(void) const;
+	std::string			token(void) const;
+	std::string			info(void) const;
 
-// private:
-// 	ServerCommand(void);
+private:
+	ServerCommand(void);
+};
 
-// };
-
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // class NickServerCommand : public Command {
 // public:

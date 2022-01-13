@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockStream.cpp }-------------------------------**
 **----- Created -------------{ 2021-05-07 16:21:55 }--------------------------**
-**----- Updated -------------{ 2021-12-10 05:38:22 }--------------------------**
+**----- Updated -------------{ 2022-01-09 16:14:07 }--------------------------**
 ********************************************************************************
 */
 
@@ -38,7 +38,7 @@ SockStream	&SockStream::operator=(SockStream const &src) {
 SockStream::SockStream(int const sock) : _sock(sock) { return; }
 
 // __________Member functions____________
-bool SockStream::read(void) {
+bool SockStream::read(void) throw(SockStream::FailRecv){
 	std::stringstream	ss;
 	char				tmp_buff[READ_SIZE + 1];
 	int					ret;
@@ -47,27 +47,26 @@ bool SockStream::read(void) {
 	if (!(ret = recv(this->_sock, tmp_buff, READ_SIZE, 0)))
 		return false;
 	else if (ret == -1)
-		perror("RECV error:");
+		throw(SockStream::FailRecv());
 	else
 		ss.str(tmp_buff);
 	this->readMessage(ss);
 	return true;
 }
 
-void SockStream::write(void) throw(SendFunctionException) {
+void SockStream::write(void) throw(SockStream::FailSend) {
 	if (!this->_wmsg.empty())
 		this->writeMessage(this->_wmsg.front());
 }
 
-Message	*SockStream::getLastMessage(void) {
-	Message *ret;
+Message	SockStream::getLastMessage(void) {
+	Message ret;
 
-	ret = nullptr;
 	if (!this->_rmsg.empty())
 	{
 		if (this->_rmsg.front().received())
 		{
-			ret = new Message(this->_rmsg.front());
+			ret = Message(this->_rmsg.front());
 			this->_rmsg.pop();
 		}
 	}
@@ -103,10 +102,7 @@ void				SockStream::setWmsg(std::queue<Message> const &src) { this->_wmsg = src;
 // 					PRIVATE
 // ########################################
 
-void SockStream::freshMessage(void) {
-	this->_rmsg.push(Message());
-}
-
+void SockStream::freshMessage(void) { this->_rmsg.push(Message()); }
 void SockStream::readMessage(std::stringstream &input) {
 	std::string tmp;
 
@@ -116,15 +112,17 @@ void SockStream::readMessage(std::stringstream &input) {
 		return;
 	else {
 		std::getline(input, tmp);
-		if (this->_rmsg.empty())
-			this->freshMessage(); 									// If it is the first msg, init one
-		this->_rmsg.back().load(tmp); 								// Add to latest msg new data
-		if (input.eof() == false || this->_rmsg.back().isFull())	// If EOF not reached (we find a '\n')
-		{
-			this->_rmsg.back().received(true);						// Mark message as finished
-			this->_rmsg.back().purify();							// Remove '\r' from Windows line return
-			this->freshMessage();									// Init next one
-			this->readMessage(input);								// Loop until no more data
+		if (!input.bad()) {
+			if (this->_rmsg.empty())
+				this->freshMessage(); 									// If it is the first msg, init one
+			this->_rmsg.back().load(tmp); 								// Add to latest msg new data
+			if (!input.eof() || this->_rmsg.back().isFull())			// If EOF not reached (we find a '\n')
+			{
+				this->_rmsg.back().received(true);						// Mark message as finished
+				this->_rmsg.back().purify();							// Remove '\r' from Windows line return
+				this->freshMessage();									// Init next one
+				this->readMessage(input);								// Loop until no more data
+			}
 		}
 	}
 }
@@ -136,7 +134,7 @@ void SockStream::writeMessage(Message &msg) {
 	{
 		tmp = msg.unload(READ_SIZE);
 		if (send(this->_sock, tmp.c_str(), tmp.length(), 0) == -1)
-			throw(SockStream::SendFunctionException());
+			throw(SockStream::FailSend());
 		if (msg.isWritten())
 			this->_wmsg.pop();
 	}
@@ -146,15 +144,26 @@ void SockStream::writeMessage(Message &msg) {
 // 				 EXECEPTIONS
 // ########################################
 
-SockStream::SendFunctionException::~SendFunctionException(void) throw() { return; }
-SockStream::SendFunctionException::SendFunctionException(void) { return; }
-SockStream::SendFunctionException::SendFunctionException(SendFunctionException const &src) : std::exception(static_cast<std::exception const &>(src)) { return; }
-SockStream::SendFunctionException &SockStream::SendFunctionException::operator=(SendFunctionException const &src) {
-	static_cast<std::exception &>(*this) = static_cast<std::exception const &>(src);
+SockStream::FailSend::~SendFunctionException(void) throw() { return; }
+SockStream::FailSend::SendFunctionException(void) { return; }
+SockStream::FailSend::SendFunctionException(SockStream::FailSend const &src) : inherited(static_cast<inherited const &>(src)) { return; }
+SockStream::FailSend &SockStream::FailSend::operator=(SockStream::FailSend const &src) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(src);
 	return *this;
 }
-const char *SockStream::SendFunctionException::what() const throw() {
+const char *SockStream::FailSend::what() const throw() {
 	return ("Send function failed.");
+}
+
+SockStream::FailRecv::~RecvFunctionException(void) throw() { return; }
+SockStream::FailRecv::RecvFunctionException(void) { return; }
+SockStream::FailRecv::RecvFunctionException(SockStream::FailRecv const &src) : inherited(static_cast<inherited const &>(src)) { return; }
+SockStream::FailRecv &SockStream::FailRecv::operator=(SockStream::FailRecv const &src) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(src);
+	return *this;
+}
+const char *SockStream::FailRecv::what() const throw() {
+	return ("Recv function failed.");
 }
 
 // ########################################

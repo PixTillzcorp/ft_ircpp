@@ -8,6 +8,7 @@
 
 #define BIND true
 #define ACCEPT false
+#define CONNECT false
 
 class SockInfo {
 public: // #####################################################################
@@ -30,33 +31,33 @@ public: // #####################################################################
 	SockInfo(t_saddr_s const &ss, bool bind);
 
 	// __________Member functions____________
-	ailist_it		begin(void)			/*_*/ throw(NoData);
-	ailist_it		end(void)			/*_*/ throw(NoData);
-	ailist_cit		cbegin(void)		const throw(NoData);
-	ailist_cit		cend(void)			const throw(NoData);
-	size_t			size(void)			const throw(NoData);
-	AddrInfo const	&addrinfo(void)		const throw(NoData);
-	AddrInfo const	&addrinfo(size_t x)	const throw(NoData);
+	ailist_it		begin(void)			/*_*/;
+	ailist_it		end(void)			/*_*/;
+	ailist_cit		cbegin(void)		const;
+	ailist_cit		cend(void)			const;
+	size_t			size(void)			const;
+	AddrInfo const	&addrinfo(void)		const;
+	AddrInfo const	&addrinfo(size_t x)	const;
 
-	t_sa const		*sockaddr(void)		const throw(NoData);
-	u_int16_t		flags(void)			const throw(NoData);
-	u_int16_t		family(void)		const throw(NoData);
-	u_int16_t		socktype(void)		const throw(NoData);
-	u_int16_t		protocol(void)		const throw(NoData);
-	socklen_t		addrLen(void)		const throw(NoData);
-	std::string		addr(void)			const throw(NoData);
-	u_int16_t		portNbr(void)		const throw(NoData);
-	std::string		canonname(void)		const throw(NoData);
+	t_sa const		*sockaddr(void)		const;
+	u_int16_t		flags(void)			const;
+	u_int16_t		family(void)		const;
+	u_int16_t		socktype(void)		const;
+	u_int16_t		protocol(void)		const;
+	socklen_t		addrLen(void)		const;
+	std::string		addr(void)			const;
+	u_int16_t		portNbr(void)		const;
+	std::string		canonname(void)		const;
 
-	t_sa const		*sockaddr(size_t x) const throw(NoData);
-	u_int16_t		flags(size_t x)		const throw(NoData);
-	u_int16_t		family(size_t x)	const throw(NoData);
-	u_int16_t		socktype(size_t x)	const throw(NoData);
-	u_int16_t		protocol(size_t x)	const throw(NoData);
-	socklen_t		addrLen(size_t x)	const throw(NoData);
-	std::string		addr(size_t x)		const throw(NoData);
-	u_int16_t		portNbr(size_t x)	const throw(NoData);
-	std::string		canonname(size_t x)	const throw(NoData);
+	t_sa const		*sockaddr(size_t x) const;
+	u_int16_t		flags(size_t x)		const;
+	u_int16_t		family(size_t x)	const;
+	u_int16_t		socktype(size_t x)	const;
+	u_int16_t		protocol(size_t x)	const;
+	socklen_t		addrLen(size_t x)	const;
+	std::string		addr(size_t x)		const;
+	u_int16_t		portNbr(size_t x)	const;
+	std::string		canonname(size_t x)	const;
 
 	// ______________Exceptions______________
 	typedef class TcpProtocolException : public std::exception { // Tcp protocol unknown
@@ -81,22 +82,10 @@ public: // #####################################################################
 		virtual const char *what() const throw();
 	} FailGai;
 
-	typedef class EmptyDataException : public std::exception { // getaddrinfo failure
-	public:
-		typedef std::exception inherited;
-
-		virtual ~EmptyDataException(void) throw();
-		EmptyDataException(void);
-		EmptyDataException(EmptyDataException const &src);
-		EmptyDataException &operator=(EmptyDataException const &src);
-		virtual const char *what() const throw();
-	} NoData;
-
-
 private: // ####################################################################
 	bool				isIP(u_int16_t family) const;
 	std::string	const	nbrToStr(unsigned int nbr) const;
-	void				retrieveInfo(u_int16_t family, bool bind) throw(FailGai, NoData);
+	void				retrieveInfo(u_int16_t family, bool bind) throw(FailGai);
 };
 
 // Debug function

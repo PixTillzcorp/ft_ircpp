@@ -54,15 +54,6 @@ public: // #####################################################################
 		virtual const char *what() const throw();
 	};
 
-	class CloseSocketException : public std::exception { // Flag set/unset error
-	public:
-		virtual ~CloseSocketException(void) throw();
-		CloseSocketException(void);
-		CloseSocketException(CloseSocketException const &src);
-		CloseSocketException &operator=(CloseSocketException const &src);
-		virtual const char *what() const throw();
-	};
-
 private: // ####################################################################
 
 	unsigned int	_ufd;

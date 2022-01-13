@@ -11,11 +11,12 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockInfo.cpp }---------------------------------**
 **----- Created -------------{ 2021-05-05 14:52:08 }--------------------------**
-**----- Updated -------------{ 2021-12-09 16:40:32 }--------------------------**
+**----- Updated -------------{ 2022-01-10 05:29:22 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/SockInfo.hpp"
+#include "SockInfo.hpp"
+#include "Utils.hpp"
 
 SockInfo::~SockInfo() { return; }
 SockInfo::SockInfo() { return; }
@@ -45,48 +46,48 @@ SockInfo::SockInfo(t_saddr_s const &ss, bool bind) {
 		throw(SockInfo::NoTcp());
 	tmp = new AddrInfo(ss);
 	host = tmp->retrieveAddr();
-	port = nbrToStr(tmp->retrievePort());
+	port = Utils::nbrToStr(tmp->retrievePort());
 	delete tmp;
 	retrieveInfo(ss.ss_family, bind);
 }
 
 // __________Member functions____________
-SockInfo::ailist_it		SockInfo::begin(void)	  /*_*/ throw(SockInfo::NoData) { return infos.begin(); }
-SockInfo::ailist_it		SockInfo::end(void)		  /*_*/ throw(SockInfo::NoData) { return infos.end(); }
-SockInfo::ailist_cit	SockInfo::cbegin(void)	  const throw(SockInfo::NoData) { return infos.begin(); }
-SockInfo::ailist_cit	SockInfo::cend(void)	  const throw(SockInfo::NoData) { return infos.end(); }
+SockInfo::ailist_it		SockInfo::begin(void)	  /*_*/ { return infos.begin(); }
+SockInfo::ailist_it		SockInfo::end(void)		  /*_*/ { return infos.end(); }
+SockInfo::ailist_cit	SockInfo::cbegin(void)	  const { return infos.begin(); }
+SockInfo::ailist_cit	SockInfo::cend(void)	  const { return infos.end(); }
 
-size_t					SockInfo::size(void)			  const throw(SockInfo::NoData) { return infos.size(); }
-AddrInfo const			&SockInfo::addrinfo(void)		  const throw(SockInfo::NoData) { return addrinfo(0); }
-AddrInfo const			&SockInfo::addrinfo(size_t x)	  const throw(SockInfo::NoData) {
+size_t				SockInfo::size(void)		  const { return infos.size(); }
+AddrInfo const		&SockInfo::addrinfo(void)	  const { return addrinfo(0); }
+AddrInfo const		&SockInfo::addrinfo(size_t x) const {
 	ailist::const_iterator it = infos.begin();
 
-	if (infos.empty() || x >= infos.size())
-		throw(SockInfo::NoData());
-	std::advance(it, x);
+	if (x >= infos.size())
+		x = infos.size() - 1;
+	if (x > 0)
+		std::advance(it, x);
 	return (*it);
 }
 
+t_sa const			*SockInfo::sockaddr(void)	  const { return sockaddr(0); }
+u_int16_t			SockInfo::flags(void)		  const { return flags(0); }
+u_int16_t			SockInfo::family(void)		  const { return family(0); }
+u_int16_t			SockInfo::socktype(void)	  const { return socktype(0); }
+u_int16_t			SockInfo::protocol(void)	  const { return protocol(0); }
+socklen_t			SockInfo::addrLen(void)		  const { return addrLen(0); }
+std::string			SockInfo::addr(void)		  const { return addr(0); }
+u_int16_t			SockInfo::portNbr(void)		  const { return portNbr(0); }
+std::string			SockInfo::canonname(void)	  const { return canonname(0); }
 
-t_sa const			*SockInfo::sockaddr(void)	  const throw(SockInfo::NoData) { return sockaddr(0); }
-u_int16_t			SockInfo::flags(void)		  const throw(SockInfo::NoData) { return flags(0); }
-u_int16_t			SockInfo::family(void)		  const throw(SockInfo::NoData) { return family(0); }
-u_int16_t			SockInfo::socktype(void)	  const throw(SockInfo::NoData) { return socktype(0); }
-u_int16_t			SockInfo::protocol(void)	  const throw(SockInfo::NoData) { return protocol(0); }
-socklen_t			SockInfo::addrLen(void)		  const throw(SockInfo::NoData) { return addrLen(0); }
-std::string			SockInfo::addr(void)		  const throw(SockInfo::NoData) { return addr(0); }
-u_int16_t			SockInfo::portNbr(void)		  const throw(SockInfo::NoData) { return portNbr(0); }
-std::string			SockInfo::canonname(void)	  const throw(SockInfo::NoData) { return canonname(0); }
-
-t_sa const			*SockInfo::sockaddr(size_t x) const throw(SockInfo::NoData) { return reinterpret_cast<t_sa const *>(&(addrinfo(x).ai_addr)); }
-u_int16_t			SockInfo::flags(size_t x)	  const throw(SockInfo::NoData) { return addrinfo(x).ai_flags; }
-u_int16_t			SockInfo::family(size_t x) 	  const throw(SockInfo::NoData) { return addrinfo(x).ai_family; }
-u_int16_t			SockInfo::socktype(size_t x)  const throw(SockInfo::NoData) { return addrinfo(x).ai_socktype; }
-u_int16_t			SockInfo::protocol(size_t x)  const throw(SockInfo::NoData) { return addrinfo(x).ai_protocol; }
-socklen_t			SockInfo::addrLen(size_t x)	  const throw(SockInfo::NoData) { return addrinfo(x).ai_addrlen; }
-std::string			SockInfo::addr(size_t x)	  const throw(SockInfo::NoData) { return addrinfo(x).retrieveAddr(); }
-u_int16_t			SockInfo::portNbr(size_t x)	  const throw(SockInfo::NoData) { return addrinfo(x).retrievePort(); }
-std::string			SockInfo::canonname(size_t x) const throw(SockInfo::NoData) {
+t_sa const			*SockInfo::sockaddr(size_t x) const { return reinterpret_cast<t_sa const *>(&(addrinfo(x).ai_addr)); }
+u_int16_t			SockInfo::flags(size_t x)	  const { return addrinfo(x).ai_flags; }
+u_int16_t			SockInfo::family(size_t x) 	  const { return addrinfo(x).ai_family; }
+u_int16_t			SockInfo::socktype(size_t x)  const { return addrinfo(x).ai_socktype; }
+u_int16_t			SockInfo::protocol(size_t x)  const { return addrinfo(x).ai_protocol; }
+socklen_t			SockInfo::addrLen(size_t x)	  const { return addrinfo(x).ai_addrlen; }
+std::string			SockInfo::addr(size_t x)	  const { return addrinfo(x).retrieveAddr(); }
+u_int16_t			SockInfo::portNbr(size_t x)	  const { return addrinfo(x).retrievePort(); }
+std::string			SockInfo::canonname(size_t x) const {
 	if (addrinfo(x).ai_canonname.empty()) {
 		if (!(addr(x).compare("::")))
 			return("localhost");
@@ -107,9 +108,7 @@ bool			SockInfo::isIP(u_int16_t family) const {
 	return false;
 }
 
-std::string	const	SockInfo::nbrToStr(unsigned int nbr) const { return static_cast<std::ostringstream *>(&(std::ostringstream() << nbr))->str(); }
-
-void			SockInfo::retrieveInfo(u_int16_t family, bool bind) throw(SockInfo::FailGai, SockInfo::NoData) {
+void			SockInfo::retrieveInfo(u_int16_t family, bool bind) throw(SockInfo::FailGai) {
 	t_ai	*ret;
 	t_ai	hints;
 
@@ -119,7 +118,7 @@ void			SockInfo::retrieveInfo(u_int16_t family, bool bind) throw(SockInfo::FailG
 	hints.ai_protocol = getprotobyname("tcp")->p_proto;
 	if (bind)
 		hints.ai_flags |= AI_PASSIVE; /* For bind() function call if used */
-	if (getaddrinfo(host.c_str(), port.c_str(), &hints, &ret))
+	if (getaddrinfo(host.c_str(), port.c_str(), &hints, &ret) || !ret)
 		throw(SockInfo::FailGai());
 	for (t_ai *head = ret; head != nullptr; head = head->ai_next)
 		infos.push_back(AddrInfo(head));
@@ -154,32 +153,16 @@ const char *SockInfo::FailGai::what() const throw() {
 	return ("\'getaddrinfo()\' failed.");
 }
 
-SockInfo::NoData::~EmptyDataException(void) throw() { return; }
-SockInfo::NoData::EmptyDataException(void) { return; }
-SockInfo::NoData::EmptyDataException(EmptyDataException const &src) :
-	inherited(static_cast<inherited const &>(src)) { return; }
-SockInfo::NoData &SockInfo::NoData::operator=(EmptyDataException const &src) {
-	static_cast<inherited &>(*this) = static_cast<inherited const &>(src);
-	return *this;
-}
-const char *SockInfo::NoData::what() const throw() {
-	return ("No data, couldn\'t access it.");
-}
-
 // ########################################
 // 					DEBUG
 // ########################################
 
 std::ostream &operator<<(std::ostream &flux, SockInfo const &src) {
 	flux << "host \'" << src.host << "\' port [" << (src.port.empty() ? "None" : src.port) << "]" << std::endl;
-	try {
-		for (SockInfo::ailist_cit it = src.cbegin(); it != src.cend(); it++) {
-			flux << "~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-			flux << (*it);
-		}
+	for (SockInfo::ailist_cit it = src.cbegin(); it != src.cend(); it++) {
 		flux << "~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
-	} catch (SockInfo::NoData &ex) {
-		flux << "No data for this host/port combinaison." << std::endl;
+		flux << (*it);
 	}
+	flux << "~~~~~~~~~~~~~~~~~~~~~~~~" << std::endl;
 	return flux;
 }

@@ -11,11 +11,11 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ CommandLib.cpp }-------------------------------**
 **----- Created -------------{ 2021-06-14 11:07:57 }--------------------------**
-**----- Updated -------------{ 2021-12-03 01:14:15 }--------------------------**
+**----- Updated -------------{ 2022-01-05 18:29:42 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/CommandLib.hpp"
+#include "CommandLib.hpp"
 
 // ########################################
 // 					UNIQUE
@@ -35,15 +35,13 @@ PassCommand &PassCommand::operator=(PassCommand const &cpy) {
 
 // _____________Constructor______________
 PassCommand::PassCommand(Command const &src) : inherited(src) { return; }
-PassCommand::PassCommand(std::list<std::string> const &args) : inherited(NO_PREFIX, "PASS", args) { return; }
+PassCommand::PassCommand(std::string const &pass) : inherited(NO_PREFIX, "PASS", pass) { return; }
 
 // __________Member functions____________
 void		PassCommand::isValid(void) const throw(inherited::InvalidCommandException) {
 	if (!prefix.empty())
 		throw (inherited::InvalidCommandException(ERR_DISCARDCOMMAND));
-	if (!argNbr(3) && !argNbr(1))
-		throw (inherited::InvalidCommandException(ERR_WRONGPARAMSNUMBER));
-	if (argNbr(3) && argX(2).find('|') == std::string::npos)
+	if (!argNbr(1))
 		throw (inherited::InvalidCommandException(ERR_WRONGPARAMSNUMBER));
 }
 
@@ -106,7 +104,7 @@ NickCommand &NickCommand::operator=(NickCommand const &cpy) {
 // _____________Constructor______________
 NickCommand::NickCommand(Command const &src) : inherited(src) { return; }
 NickCommand::NickCommand(std::string const &prefix, std::string const &nickname) : inherited(prefix, "NICK", nickname) { return; }
-NickCommand::NickCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "NICK", args) { return; }
+NickCommand::NickCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "NICK", args) { return; }
 
 // __________Member functions____________
 void		NickCommand::isValid(void) const throw(inherited::InvalidCommandException) {
@@ -131,7 +129,7 @@ UserCommand &UserCommand::operator=(UserCommand const &cpy) {
 
 // _____________Constructor______________
 UserCommand::UserCommand(Command const &src) : inherited(src) { return; }
-UserCommand::UserCommand(std::list<std::string> const &args) : inherited(NO_PREFIX, "USER", args) { return; }
+UserCommand::UserCommand(inherited::arglist const &args) : inherited(NO_PREFIX, "USER", args) { return; }
 UserCommand::UserCommand(std::string const &username, std::string const &modes, std::string const &realname) :
 	Command(NO_PREFIX, "USER", inherited::arglist()) {
 	addArg(username);
@@ -167,7 +165,7 @@ QuitCommand &QuitCommand::operator=(QuitCommand const &cpy) {
 // _____________Constructor______________
 QuitCommand::QuitCommand(Command const &src) : inherited(src) { return; }
 QuitCommand::QuitCommand(std::string const &prefix, std::string const &msg) : inherited(prefix, "QUIT", msg) { return; }
-QuitCommand::QuitCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "QUIT", args) { return; }
+QuitCommand::QuitCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "QUIT", args) { return; }
 
 // __________Member functions____________
 void		QuitCommand::isValid(void) const throw(inherited::InvalidCommandException) {
@@ -192,7 +190,7 @@ PrivmsgCommand &PrivmsgCommand::operator=(PrivmsgCommand const &cpy) {
 
 // _____________Constructor______________
 PrivmsgCommand::PrivmsgCommand(Command const &src) : inherited(src) { return; }
-PrivmsgCommand::PrivmsgCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "PRIVMSG", args) { return; }
+PrivmsgCommand::PrivmsgCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "PRIVMSG", args) { return; }
 PrivmsgCommand::PrivmsgCommand(std::string const &prefix, std::string const &target, std::string const &msg) :
 	inherited(prefix, "PRIVMSG", inherited::arglist()) {
 	addArg(target);
@@ -227,7 +225,7 @@ NoticeCommand &NoticeCommand::operator=(NoticeCommand const &cpy) {
 
 // _____________Constructor______________
 NoticeCommand::NoticeCommand(Command const &src) : inherited(src) { return; }
-NoticeCommand::NoticeCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "NOTICE", args) { return; }
+NoticeCommand::NoticeCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "NOTICE", args) { return; }
 NoticeCommand::NoticeCommand(std::string const &prefix, std::string const &target, std::string const &msg) :
 	inherited(prefix, "NOTICE", inherited::arglist()) {
 	addArg(target);
@@ -417,7 +415,7 @@ PartCommand &PartCommand::operator=(PartCommand const &cpy) {
 
 // _____________Constructor______________
 PartCommand::PartCommand(Command const &src) : inherited(src) { return; }
-PartCommand::PartCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "PART", args) { return; }
+PartCommand::PartCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "PART", args) { return; }
 PartCommand::PartCommand(std::string const &prefix, std::string const &target, std::string const &msg) :
 	inherited(prefix, "PART", inherited::arglist()){
 	addArg(target);
@@ -448,7 +446,7 @@ TopicCommand &TopicCommand::operator=(TopicCommand const &cpy) {
 
 // _____________Constructor______________
 TopicCommand::TopicCommand(Command const &src) : inherited(src) { return; }
-TopicCommand::TopicCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "TOPIC", args) { return; }
+TopicCommand::TopicCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "TOPIC", args) { return; }
 TopicCommand::TopicCommand(std::string const &prefix, std::string const &target, std::string const &topic) :
 	inherited(prefix, "TOPIC", inherited::arglist()){
 	addArg(target);
@@ -479,7 +477,7 @@ OperCommand &OperCommand::operator=(OperCommand const &cpy) {
 
 // _____________Constructor______________
 OperCommand::OperCommand(Command const &src) : inherited(src) { return; }
-OperCommand::OperCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "OPER", args) { return; }
+OperCommand::OperCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "OPER", args) { return; }
 OperCommand::OperCommand(std::string const &prefix, std::string const &name, std::string const &password) :
 	inherited(prefix, "OPER", inherited::arglist()) {
 	addArg(name);
@@ -535,7 +533,7 @@ ModeCommand &ModeCommand::operator=(ModeCommand const &cpy) {
 
 // _____________Constructor______________
 ModeCommand::ModeCommand(Command const &src) : inherited(src) { return; }
-ModeCommand::ModeCommand(std::string const &prefix, std::list<std::string> const &args) : inherited(prefix, "MODE", args) { return; }
+ModeCommand::ModeCommand(std::string const &prefix, inherited::arglist const &args) : inherited(prefix, "MODE", args) { return; }
 ModeCommand::ModeCommand(std::string const &prefix, std::string const &chan) : inherited(prefix, "MODE", chan) { return; }
 ModeCommand::ModeCommand(std::string const &prefix, std::string const &target, std::string const &mode) :
 	inherited(prefix, "MODE", inherited::arglist()) {
@@ -552,6 +550,7 @@ ModeCommand::ModeCommand(std::string const &prefix, std::string const &chan, std
 // __________Member functions____________
 void		ModeCommand::isValid(void) const throw(inherited::InvalidCommandException) {
 	inherited::isValid();
+	if (!this->argNbr(1) && !this->argNbr(2) && !this->argNbr(3))
 		throw (inherited::InvalidCommandException(ERR_WRONGPARAMSNUMBER));
 }
 
@@ -665,59 +664,37 @@ std::string		WhoCommand::mask(void) const { return (argX(0)); }
 // 					SERVER
 // ########################################
 
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// // ____________Canonical Form____________
-// ServerCommand::~ServerCommand(void) { return; }
-// // ServerCommand::ServerCommand(void) { return; }
-// ServerCommand::ServerCommand(ServerCommand const &src) { *this = src; }
-// ServerCommand &ServerCommand::operator=(ServerCommand const &src) {
-// 	static_cast<Command &>(*this) = static_cast<Command const &>(src);
-// 	servername = src.servername;
-// 	hopcount = src.hopcount;
-// 	token = src.token;
-// 	info = src.info;
-// 	return *this;
-// }
+// ____________Canonical Form____________
+ServerCommand::~ServerCommand(void) { return; }
+// ServerCommand::ServerCommand(void) { return; }
+ServerCommand::ServerCommand(ServerCommand const &cpy) :
+	inherited(static_cast<inherited const &>(cpy)) { return; }
+ServerCommand &ServerCommand::operator=(ServerCommand const &cpy) {
+	static_cast<Command &>(*this) = static_cast<Command const &>(cpy);
+	return *this;
+}
 
-// // _____________Constructor______________
-// ServerCommand::ServerCommand(std::string const prefix, std::list<std::string> const &args) : inherited(prefix, "SERVER", args) {
-// 	servername = argX(0);
-// 	hopcount = std::stoi(argX(1));
-// 	token = argX(2);
-// 	info = argX(3);
-// 	return;
-// }
-// ServerCommand::ServerCommand(std::list<std::string> const &args) : inherited(NO_PREFIX, "SERVER", args) {
-// 	servername = argX(0);
-// 	hopcount = std::stoi(argX(1));
-// 	token = argX(2);
-// 	info = argX(3);
-// 	return;
-// }
-// ServerCommand::ServerCommand(std::string const prefix, ServerCommand const &cmd) : inherited(prefix, "SERVER", cmd.getArgs()) {
-// 	hopcount += 1;
-// 	return;
-// }
-// ServerCommand::ServerCommand(Command const &src) : inherited(src) {
-// 	servername = argX(0);
-// 	hopcount = std::stoi(argX(1));
-// 	token = argX(2);
-// 	info = argX(3);
-// 	return;
-// }
+// _____________Constructor______________
+ServerCommand::ServerCommand(Command const &src) : inherited(src) { return; }
+ServerCommand::ServerCommand(std::string const prefix, inherited::arglist const &args) :
+	inherited(prefix, "SERVER", args) { return; }
+ServerCommand::ServerCommand(inherited::arglist const &args) :
+	inherited(NO_PREFIX, "SERVER", args) { return; }
+// ServerCommand::ServerCommand(std::string const prefix, ServerCommand const &cmd) :
+// 	inherited(prefix, "SERVER", cmd.getArgs()) { return; } //hopcount + 1
 
-// bool		ServerCommand::isValid(void) const {
-// 	if (prefix.find_first_not_of(AUL_DDD) != std::string::npos)
-// 		return false;
-// 	if (command.empty() || command.compare("SERVER"))
-// 		return false;
-// 	if (argNbr() != 4)
-// 		return false;
-// 	return true;
-// }
+void		ServerCommand::isValid(void) const throw(InvalidCommandException) {
+	inherited::isValid();
+}
 
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+std::string			ServerCommand::servername(void)		const { return (argX(0)); }
+std::string			ServerCommand::hopcount(void)		const { return (argX(1)); }
+std::string			ServerCommand::token(void)			const { return (argX(2)); }
+std::string			ServerCommand::info(void)			const { return (argX(3)); }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 // // ____________Canonical Form____________
 // NickServerCommand::~NickServerCommand(void) { return; }
@@ -737,7 +714,7 @@ std::string		WhoCommand::mask(void) const { return (argX(0)); }
 
 // // _____________Constructor______________
 // NickServerCommand::NickServerCommand(std::string const prefix, std::string const &nick) : inherited(prefix, "NICK", std::list<std::string>(1, nick)){ return; }
-// NickServerCommand::NickServerCommand(std::list<std::string> const &args) : inherited("", "NICK", args) { return; }
+// NickServerCommand::NickServerCommand(inherited::arglist const &args) : inherited("", "NICK", args) { return; }
 // NickServerCommand::NickServerCommand(Command const &src) : inherited(src) {
 // 	nickname = argX(0);
 // 	if (src.argNbr() == 7)

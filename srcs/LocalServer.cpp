@@ -11,44 +11,70 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LocalServer.cpp }------------------------------**
 **----- Created -------------{ 2021-09-07 16:32:43 }--------------------------**
-**----- Updated -------------{ 2021-12-11 02:02:14 }--------------------------**
+**----- Updated -------------{ 2022-01-13 04:01:57 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/LocalServer.hpp"
-#include "../incs/Debug.hpp"
+#include "LocalServer.hpp"
+#include "Debug.hpp"
+#include "Utils.hpp"
 
 // ########################################
 // 					PUBLIC
 // ########################################
 
 // ____________Canonical Form____________
-LocalServer::~LocalServer() { return; }
+LocalServer::~LocalServer() {
+	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "\t\t+ Server closed successfuly +");
+	_logfile.append(LOG_DATE, LOG_DARKPURPLE, " ###############################################");
+	return;
+}
 // LocalServer::LocalServer() { return; } /* Private standard constructor*/
 LocalServer::LocalServer(LocalServer const &src) :
 	inherited(static_cast<inherited const &>(src)), _nicknames(src.getNicknames()),
 	_usernames(src.getUsernames()), _realnames(src.getRealnames()), _conxs(src.getConxs()),
-	_sm(src.getSM()), _password(src.getPassword()), _oppass(src.getOppass()) { return; }
+	_sm(src.getSM()), _password(src.getPassword()), _oppass(src.getOppass()),
+	_logfile(src.getLogfile()), _whitelist(src.getWhitelist()) { return; }
 LocalServer &LocalServer::operator=(LocalServer const &src) {
 	static_cast<inherited &>(*this) = static_cast<inherited const &>(src);
 	_nicknames = src.getNicknames();
 	_usernames = src.getUsernames();
 	_realnames = src.getRealnames();
+	_servnames = src.getServnames();
 	_conxs = src.getConxs();
 	_sm = src.getSM();
 	_password = src.getPassword();
 	_oppass = src.getOppass();
+	_logfile = src.getLogfile();
+	_whitelist = src.getWhitelist();
 	return *this;
 }
 
 // _____________Constructor______________
-LocalServer::LocalServer(std::string const &port, u_int16_t family, std::string password) :
-Connection(port, family), _password(password), _sm(sock(), true) { return; }
+LocalServer::LocalServer(std::string const &port, u_int16_t family, std::string const &password) :
+inherited("", port, family), _password(password), _sm(sock(), true), _logfile("") {
+	ConfigParser conf("server.config");
+
+	if (conf.empty())
+		throw(Connection::ConxInit("Config file \'server.config\' is empty or doesn\'t exist."));
+	if ((servername = conf["servername"]).empty())
+		throw(Connection::ConxInit("Config file requires valid servername.\'servername = [servername]\'"));
+	if ((desc = conf["description"]).empty())
+		desc = std::string("No description for this server");
+	if ((_oppass = conf["oppass"]).empty())
+		throw(Connection::ConxInit("Config file requires valid operator password. \'oppass = [password]\'"));
+	if (!(_logfile = LogFile(conf["logfile"])))
+		throw(Connection::ConxInit("Config file requires valid log file name. \'logfile = [filename]\'"));
+	if ((_whitelist = ConfigParser(LOCALSERV_WHITELIST_FILE)).empty())
+		_logfile.append(LOG_DATE, DARK_GREY, " Empty whitelist: server launched in standalone.");
+	return;
+}
 
 // __________Member functions____________
 
 bool		LocalServer::run(void) {
-	DEBUG_DISPC(COUT, "\t+ Local server running +", DARK_PURPLE);
+	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "\t[" + std::string(SERVER_VERSION) + "] ################################");
+	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "\t\t+ Server launched successfuly +");
 	while(!isFinished()) {
 		selectCall();
 		checkStd();
@@ -58,39 +84,116 @@ bool		LocalServer::run(void) {
 	return true;
 }
 
+void		LocalServer::joinNet(std::string const &host, std::string const &port, std::string const &password) {
+	Connection *tmp;
+
+	if (!isWhitelisted(host + "," + port + "," + password, false)) {
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Joining \'Server\' -> [" + host + "]: Not whitelisted !");
+		return;
+	}
+	try {
+		tmp = new Connection(host, port, info.family());
+	} catch (std::exception &ex) {
+		_logfile.append(LOG_DATE, LOG_DARKGREY, ex.what());
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Joining \'Server\' -> [" + host + "]: failed !");
+		return;
+	}
+	_logfile.append(LOG_DATE, LOG_YELLOW, " Joining \'Server\' -> [" + host + "]");
+	_conxs.push_back(tmp);
+	_sm.addFd(tmp->sock());
+	tmp->send(PassCommand(password));
+	tmp->send(ServerCommand(getArgListConnect()));
+	tmp->isConnect(true);
+}
+
+// ########################################
+// 				   PRIVATE
+// ########################################
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//		 CONNECTION UTILS
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 void		LocalServer::newConx(void) {
 	Connection *tmp;
 
 	try {
 		tmp = new Connection(sock());
-		DEBUG_DISPC(COUT, "~> New Connection !", DARK_ORANGE); //write to log
-	} catch (Connection::ConxInit &ex) {
-		DEBUG_DISPC(COUT, "~> Failed to accept a Connection !", DARK_RED); //write to log
-		tmp = nullptr;
-	} if (tmp) {
-		_conxs.push_back(tmp);
-		_sm.addFd(_conxs.back()->sock());
+	} catch (std::exception &ex) {
+		_logfile.append(LOG_DATE, LOG_DARKGREY, ex.what());
+		_logfile.append(LOG_DATE, LOG_DARKRED, " New \'Unknown\' connection: failed !");
 	}
-}
-
-Channel		*LocalServer::newChan(Client *&sender, std::string const &name) {
-	DEBUG_DISPC(COUT, "~> New Channel created !", DARK_ORANGE);
-	_chans.push_back(new Channel(sender, name));
-	return _chans.back();
+	_logfile.append(LOG_DATE, LOG_DARKGREY, " New \'Unknown\' connection: [" + tmp->name() + "]");
+	_conxs.push_back(tmp);
+	_sm.addFd(_conxs.back()->sock());
 }
 
 void		LocalServer::finishConx(Connection *target, bool clear) {
-	// DEBUG_DISPC(COUT, "~> Ending Connection !", DARK_RED);
 	if (!target)
 		return;
 	target->isFinished(true);
 	if (clear)
 		target->clearMessages();
-	else if (target->isClient()) {
-		_nicknames.erase(static_cast<Client *>(target)->nickname);
-		_usernames.erase(static_cast<Client *>(target)->username);
-		_realnames.erase(static_cast<Client *>(target)->realname);
+	if (target->isClient()) {
+		unmapName(_nicknames, static_cast<Client *>(target)->nickname);
+		unmapName(_usernames, static_cast<Client *>(target)->username);
+		unmapName(_realnames, static_cast<Client *>(target)->realname);
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Ending \'Client\' connection: [" + target->name() + "]");
+	} else if (target->isServer()) {
+		unmapName(_nicknames, static_cast<Server *>(target)->servername);
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Ending \'Server\' connection: [" + target->name() + "]");
+	} else
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Ending \'Unknown\' connection: [" + target->name() + "]");
+}
+
+void		LocalServer::mapName(namesmap &names, std::string const &name, Connection *conx) {
+	if (name.empty() || !conx)
+		return;
+	if (!names.count(name))
+		names[name] = conx;
+}
+
+void		LocalServer::unmapName(namesmap &names, std::string const &name) {
+	if (names.empty() || name.empty())
+		return;
+	if (names.count(name))
+		names.erase(name);
+}
+
+Client		*LocalServer::findClient(std::string const &name, unsigned char type) {
+	if (!name.empty()) {
+		if (type & NICKNAME) {
+			if (_nicknames.count(name))
+				return (static_cast<Client *>(_nicknames[name]));
+		}
+		if (type & USERNAME) {
+			if (_usernames.count(name))
+				return (static_cast<Client *>(_usernames[name]));
+		}
+		if (type & REALNAME) {
+			if (_realnames.count(name))
+				return (static_cast<Client *>(_realnames[name]));
+		}
 	}
+	return (nullptr);
+}
+
+Server		*LocalServer::findServer(std::string const &name) {
+	if (!name.empty()) {
+		if (_servnames.count(name))
+			return (static_cast<Server *>(_servnames[name]));
+	}
+	return (nullptr);
+}
+
+Channel		*LocalServer::newChan(Client *&sender, std::string const &name) {
+	Channel *tmp;
+
+	if(!(tmp = new(std::nothrow) Channel(sender, name)))
+		return (nullptr);
+	_chans.push_back(tmp);
+	_logfile.append(LOG_DATE, LOG_DARKGREY, " New \'Channel\' created: [" + name + "]");
+	return _chans.back();
 }
 
 void		LocalServer::finishChan(Channel *target) {
@@ -98,6 +201,7 @@ void		LocalServer::finishChan(Channel *target) {
 		return;
 	for (chanlist_it it = _chans.begin(); it != _chans.end(); it++) {
 		if ((*it) == target) {
+			_logfile.append(LOG_DATE, LOG_DARKRED, " Channel deleted ! [" + target->getName() + "]");
 			_chans.erase(it);
 			delete target;
 			break;
@@ -105,32 +209,7 @@ void		LocalServer::finishChan(Channel *target) {
 	}
 }
 
-void		LocalServer::selectCall(void) {
-	_sm.call(_conxs); //check exception later and return bool in order to fix _sm
-	// DEBUG_DISPC(COUT, "~> Select triggered !", DARK_PINK);
-}
-
-Client		*LocalServer::findClientByName(std::string const &name, unsigned char type) {
-	clientnames::iterator it;
-
-	if (name.empty())
-		return (nullptr);
-	if (type & NICKNAME) {
-		if ((it = _nicknames.find(name)) != _nicknames.end())
-			return (static_cast<Client *>(it->second));
-	}
-	if (type & USERNAME) {
-		if ((it = _usernames.find(name)) != _usernames.end())
-			return (static_cast<Client *>(it->second));
-	}
-	if (type & REALNAME) {
-		if ((it = _realnames.find(name)) != _realnames.end())
-			return (static_cast<Client *>(it->second));
-	}
-	return (nullptr);
-}
-
-Channel		*LocalServer::findChannelByName(std::string const &name) {
+Channel		*LocalServer::findChannel(std::string const &name) {
 	if (name.empty())
 		return (nullptr);
 	for (chanlist_it it = _chans.begin(); it != _chans.end(); it++) {
@@ -139,6 +218,44 @@ Channel		*LocalServer::findChannelByName(std::string const &name) {
 	}
 	return (nullptr);
 }
+
+bool		LocalServer::isWhitelisted(std::string const &info, bool servername) const {
+	if (_whitelist.empty())
+		return false;
+	for (ConfigParser::fieldmap_cit it = _whitelist.cbegin(); it != _whitelist.cend(); it++) {
+		if ((servername && !it->first.compare(info)) ||
+			(!servername && !it->second.compare(info)))
+				return true;
+	}
+	return false;
+}
+
+bool		LocalServer::checkWhitelistHost(std::string const &servername, std::string const &host) const {
+	if (_whitelist.empty())
+		return false;
+	for (ConfigParser::fieldmap_cit it = _whitelist.cbegin(); it != _whitelist.cend(); it++) {
+		if (!it->first.compare(servername)) {
+			if (!host.compare("localhost") || !host.compare("127.0.0.1") || !host.compare("::1")) {
+				if (!it->second.rfind("localhost", 0) || !it->second.rfind("127.0.0.1", 0) || !it->second.rfind("::1", 0))
+					return true;
+			} else if (!it->second.rfind(host, 0))
+				return true;
+			else
+				return false;
+		}
+	}
+	return false;
+}
+
+std::string const LocalServer::whitelistPassword(std::string const &servername) const {
+	if (_whitelist.empty())
+		return std::string();
+	return (_whitelist[servername].substr(_whitelist[servername].rfind(',') + 1, std::string::npos));
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//		 CONNECTION COUNT
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 unsigned int		LocalServer::howMany(unsigned short check) const {
 	unsigned int	count = 0;
@@ -158,27 +275,27 @@ unsigned int		LocalServer::howMany(unsigned short check, bool direct) const {
 	for (conxlist_cit it = _conxs.begin(); it != _conxs.end(); it++) {
 		if (direct && (*it)->isLink())
 			continue;
-		if (check == CONX_PENDING) {
-			if ((*it)->isPending())
-				count++;
-		} else {
-			if ((*it)->checkStatus(check))
-				count++;
-		}
+		if ((*it)->checkStatus(check))
+			count++;
 	}
 	return count;
 }
 
-std::string const 	LocalServer::howManyClient(bool direct) const { return nbrToStr(howMany(CONX_CLIENT, direct)); }
-std::string const 	LocalServer::howManyServer(bool direct, bool self) const { return nbrToStr(howMany(CONX_SERVER, direct) + (self ? 1 : 0)); }
-std::string const 	LocalServer::howManyService(bool direct) const { return nbrToStr(howMany(CONX_SERVICE, direct)); }
-std::string const 	LocalServer::howManyUnknown(void) const { return nbrToStr(howMany(CONX_PENDING, false)); }
-std::string const 	LocalServer::howManyOperator(void) const { return nbrToStr(howMany(CLIENT_OPERATOR)); }
-std::string const 	LocalServer::howManyChannel(void) const { return nbrToStr(_chans.size()); }
+std::string const 	LocalServer::howManyClient(bool direct) const { return Utils::nbrToStr(howMany(CONX_CLIENT, direct)); }
+std::string const 	LocalServer::howManyServer(bool direct, bool self) const { return Utils::nbrToStr(howMany(CONX_SERVER, direct) + (self ? 1 : 0)); }
+std::string const 	LocalServer::howManyService(bool direct) const { return Utils::nbrToStr(howMany(CONX_SERVICE, direct)); }
+std::string const 	LocalServer::howManyUnknown(void) const { return Utils::nbrToStr(howMany(CONX_PENDING, false)); }
+std::string const 	LocalServer::howManyOperator(void) const { return Utils::nbrToStr(howMany(CLIENT_OPERATOR)); }
+std::string const 	LocalServer::howManyChannel(void) const { return Utils::nbrToStr(_chans.size()); }
 
-// ########################################
-// 				   PRIVATE
-// ########################################
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//		  SELECT MODULE
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+void		LocalServer::selectCall(void) {
+	_sm.call(_conxs); //check exception later and return bool in order to fix _sm
+	// _logfile.append(LOG_DATE, LOG_DARKPINK, " Select triggered !");
+}
 
 bool		LocalServer::isReadable(Connection *conx) const { return _sm.checkRfds(conx->sock()); }
 bool		LocalServer::isWritable(Connection *conx) const { return _sm.checkWfds(conx->sock()); }
@@ -187,22 +304,27 @@ void		LocalServer::checkStd(void) {
 	std::string input;
 
 	if (_sm.checkStd()) {
-		std::getline(std::cin, input);
-		DEBUG_LDISPCB(COUT, "Input: ", input, PINK, '[');
-		if (!input.compare("EXIT") || !input.compare("Exit") || !input.compare("exit"))
-			isFinished(true);
-		if (!input.compare("NET") || !input.compare("Net") || !input.compare("net"))
-			showNet();
-		if (!input.compare("LOCAL") || !input.compare("Local") || !input.compare("local"))
-			showLocalServer();
-		if (!input.compare("NICKS") || !input.compare("Nicks") || !input.compare("nicks"))
-			showNames(_nicknames);
-		if (!input.compare("USERS") || !input.compare("Users") || !input.compare("users"))
-			showNames(_usernames);
-		if (!input.compare("REALNAMES") || !input.compare("Realnames") || !input.compare("realnames"))
-			showNames(_realnames);
-		if (!input.compare("CHANS") || !input.compare("Chans") || !input.compare("chans"))
-			showChans();
+		if (std::getline(std::cin, input)) {
+			if (!input.compare("EXIT") || !input.compare("Exit") || !input.compare("exit"))
+				isFinished(true);
+			else if (!input.compare("NET") || !input.compare("Net") || !input.compare("net"))
+				showNet();
+			else if (!input.compare("LOCAL") || !input.compare("Local") || !input.compare("local"))
+				showLocalServer();
+			else if (!input.compare("NICKS") || !input.compare("Nicks") || !input.compare("nicks"))
+				showNames(_nicknames);
+			else if (!input.compare("USERS") || !input.compare("Users") || !input.compare("users"))
+				showNames(_usernames);
+			else if (!input.compare("REALNAMES") || !input.compare("Realnames") || !input.compare("realnames"))
+				showNames(_realnames);
+			else if (!input.compare("SERVERNAMES") || !input.compare("Servernames") || !input.compare("servernames"))
+				showNames(_servnames);
+			else if (!input.compare("CHANS") || !input.compare("Chans") || !input.compare("chans"))
+				showChans();
+			else
+				return;
+			_logfile.append(LOG_DATE, LOG_PINK, " Command line input >> [" + input + "]");
+		}
 	}
 }
 
@@ -214,10 +336,15 @@ void		LocalServer::checkSock(void) {
 void		LocalServer::checkConxs(void) {
 	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
 		if (isReadable(*it)) {
-			if (!(*it)->read()) {
-				DEBUG_DISPC(COUT, "~> Someone left !", RED);
+			try {
+				if (!(*it)->read()) {
+					_logfile.append(LOG_DATE, LOG_RED, " Someone left unexpectedly ! [" + (*it)->name() + "]");
+					finishConx(*it, true);
+					continue;
+				}
+			} catch (SockStream::FailRecv &ex) {
+				_logfile.append(LOG_DATE, LOG_RED, " Connection lost while receiving !");
 				finishConx(*it, true);
-				continue;
 			}
 		}
 		while ((*it)->hasInputMessage())
@@ -225,56 +352,44 @@ void		LocalServer::checkConxs(void) {
 		if (isWritable(*it)) {
 			try {
 				(*it)->write();
-			} catch (SockStream::SendFunctionException &ex) {
-				DEBUG_DISPC(COUT, "~> PIPE may have broke with a connection !", RED);
+			} catch (SockStream::FailSend &ex) {
+				_logfile.append(LOG_DATE, LOG_RED, " Connection lost while sending !");
 				finishConx(*it, true);
-			}	 
+			}
 		}
 	}
 }
 
-// Execution module
-void		LocalServer::execCommand(Connection *&sender, Command *cmd) {
-	Client	*tmp;
-	if (!cmd)
-		return;
-	// std::cout << *cmd << std::endl;
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//		 EXECUTION MODULE
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+void		LocalServer::execCommand(Connection *&sender, Command cmd) {
+	Client	*cli;
+	Server	*svr;
+
+	std::cout << cmd << std::endl;
 	try {
 		if (sender->isPending())
-			execCommandPending(sender, *cmd);
+			execCommandPending(sender, cmd);
 		else if (sender->isClient()) {
-			tmp = static_cast<Client *>(sender);
-			if (!tmp->isRegistered()) {
-				if (*cmd == "NICK")
-					execNick(sender, NickCommand(*cmd));
-				else if (*cmd == "USER")
-					execUser(sender, UserCommand(*cmd));
-				else
-					numericReply(sender, ERR_NOTREGISTERED); 
-			}
-			else if (*cmd == "NICK")
-				execNick(sender, NickCommand(*cmd));
-			else if (*cmd == "USER")
-				execUser(sender, UserCommand(*cmd));
-			else
-				execCommandClient(tmp, *cmd);
+			execCommandClient((cli = static_cast<Client *>(sender)), cmd);
 		}
 	}
 	catch (Command::InvalidCommandException &e) {
 		if (e.code == ERR_WRONGPARAMSNUMBER || e.code == ERR_NORECIPIENT)
-			numericReply(sender, e.code, cmd->command);
+			numericReply(sender, e.code, cmd.command);
 		else if (e.code == ERR_CANNOTSENDTOCHAN)
-			numericReply(sender, e.code, cmd->argX(0));
+			numericReply(sender, e.code, cmd.argX(0));
 		else if (e.code == ERR_CHANOPRIVSNEEDED)
-			numericReply(sender, e.code, *cmd);
+			numericReply(sender, e.code, cmd);
 		else if (e.code == ERR_UNKNOWNMODE)
-			numericReply(sender, e.code, *cmd);
+			numericReply(sender, e.code, cmd);
 		else
 			numericReply(sender, e.code);
 		if (!sender->isAuthentified())
 			sender->isFinished(true);
 	}
-	delete cmd;
 }
 
 void		LocalServer::execCommandPending(Connection *&sender, Command const &cmd) {
@@ -295,15 +410,27 @@ void		LocalServer::execCommandPending(Connection *&sender, Command const &cmd) {
 			execNick(sender, NickCommand(cmd));
 		else if (cmd == "USER")
 			execUser(sender, UserCommand(cmd));
+		else if (cmd == "SERVER")
+			execServer(sender, ServerCommand(cmd));
 		else
 			numericReply(sender, ERR_NOTREGISTERED);
-		// else if (cmd == "SERVER")
-		// 	execServer(sender, ServerCommand(cmd));
 	}
 }
 
 void		LocalServer::execCommandClient(Client *&sender, Command const &cmd) {
-	if (cmd == "QUIT")
+	if (!sender->isRegistered()) {
+		if (cmd == "NICK")
+			execNick(sender, NickCommand(cmd));
+		else if (cmd == "USER")
+			execUser(sender, UserCommand(cmd));
+		else
+			numericReply(sender, ERR_NOTREGISTERED); 
+	}
+	else if (cmd == "NICK")
+		execNick(sender, NickCommand(cmd));
+	else if (cmd == "USER")
+		execUser(sender, UserCommand(cmd));
+	else if (cmd == "QUIT")
 		execQuit(sender, QuitCommand(cmd));
 	else if (cmd == "PRIVMSG")
 		execPrivmsg(sender, PrivmsgCommand(cmd));
@@ -359,8 +486,7 @@ void		LocalServer::execPass(Connection *&sender, PassCommand const &cmd) {
 		if (cmd.password() == _password)
 			sender->isAuthentified(true);
 		else {
-			std::cout << "Password: [" << cmd.password() << "] -> [" << _password << "]" << std::endl;
-			numericReply(sender, ERR_PASSWDMISMATCH);
+			sender->send(ErrorCommand("Bad password"));
 			finishConx(sender, false);
 		}
 	}
@@ -369,112 +495,155 @@ void		LocalServer::execPass(Connection *&sender, PassCommand const &cmd) {
 }
 
 void		LocalServer::execNick(Connection *&sender, NickCommand const &cmd) {
-	Client *tmp;
-
 	cmd.isValid();
+	if (!Utils::validNickName(cmd.nickname()))
+		return numericReply(sender, ERR_ERRONEOUSNICKNAME, cmd.nickname());
 	if (_nicknames.count(cmd.nickname()))
-		numericReply(sender, ERR_NICKNAMEINUSE, cmd.nickname());
-	if (sender->isClient()) {
-		tmp = static_cast<Client *>(sender);
-		if (!tmp->isRegistered()) {
-			if (tmp->nickname.empty()) {
-				tmp->nickname = cmd.nickname();
-				numericReply(sender, RPL_WELCOME, tmp->fullId());
-			}
-			else {
-				_nicknames.erase(tmp->nickname);
-				tmp->nickname = cmd.nickname();
-			}
-			_nicknames[tmp->nickname] = sender;
-		}
-		else {
-			updateChans(tmp, cmd);
-			_nicknames.erase(tmp->nickname);
-			tmp->nickname = cmd.nickname();
-			_nicknames[tmp->nickname] = sender;
-		}
+		return numericReply(sender, ERR_NICKNAMEINUSE, cmd.nickname());
+	try {
+		sender = new Client(sender, cmd);
+	} catch (std::exception &ex) {
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Promotion \'Unknown\' -> \'Client\': failed !");
+		finishConx(sender, true); //check if this line works (make promote fail)
+		return;
 	}
-	else if (sender->isPending()) {
-		try {
-			new Client(sender, cmd);
-			if (!howMany(CONX_CLIENT, true))
-				static_cast<Client *>(sender)->isLocalop(true);
-			_nicknames[static_cast<Client *>(sender)->nickname] = sender;
-		} catch (std::exception &ex) {
-			throw; // write log and find a good exception to throw
-		}
-	}
+	_logfile.append(LOG_DATE, LOG_GREEN, " Promotion \'Unknown\' -> \'Client\': [" + cmd.nickname() + "]");
+	mapName(_nicknames, cmd.nickname(), sender);
 }
 
 void		LocalServer::execUser(Connection *&sender, UserCommand const &cmd) {
-	Client *tmp;
-
 	cmd.isValid();
-	if (sender->isClient()) {
-		tmp = static_cast<Client *>(sender);
-		if (!tmp->isRegistered()) {
-			if (tmp->username.empty()) {
-				tmp->username = cmd.username();
-				tmp->realname = cmd.realname();
-				numericReply(sender, RPL_WELCOME, tmp->fullId());
-			}
-			else {
-				_usernames.erase(tmp->username);
-				tmp->username = cmd.username();
-				_realnames.erase(tmp->realname);
-				tmp->realname = cmd.realname();
-			}
-			// tmp->setModes(cmd.modes()[0] % 48); //temporary setup
-			_usernames[tmp->username] = sender;
-			_realnames[tmp->realname] = sender;
-		}
-		else
-			numericReply(sender, ERR_ALREADYREGISTERED);
+	try {
+		sender = new Client(sender, cmd);
+	} catch (std::exception &ex) {
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Promotion \'Unknown\' -> \'Client\': failed !");
+		finishConx(sender, true);
+		return;
 	}
-	else if (sender->isPending()) {
-		try {
-			new Client(sender, cmd);
-			if (!howMany(CONX_CLIENT, true))
-				static_cast<Client *>(sender)->isLocalop(true);
-			_usernames[static_cast<Client *>(sender)->username] = sender;
-			_realnames[static_cast<Client *>(sender)->realname] = sender;
-		} catch (std::exception &ex) {
-			throw; // write log and find a good exception to throw
-		}
+	_logfile.append(LOG_DATE, LOG_GREEN, " Promotion \'Unknown\' -> \'Client\': [" + cmd.username() + "]");
+	mapName(_usernames, cmd.username(), sender);
+	mapName(_realnames, cmd.realname(), sender);
+}
+
+void		LocalServer::execServer(Connection *&sender, ServerCommand const &cmd) {
+	cmd.isValid();
+	if (!isWhitelisted(cmd.servername(), true) ||
+		!checkWhitelistHost(cmd.servername(), sender->hostname()) ||
+		whitelistPassword(cmd.servername()).empty()) {
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Promotion \'Unknown\' -> \'Server\': Not whitelisted !");
+		sender->send(ErrorCommand("Access denied. You are not whitelisted by this server."));
+		finishConx(sender, false);
+		return;
+	} else if (findServer(cmd.servername())) {
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Promotion \'Unknown\' -> \'Server\': Already registered !");
+		sender->send(ErrorCommand("ID \'" + cmd.servername() + "\' already registered."));
+		finishConx(sender, false);
+		return;
+	}
+	try {
+		sender = new Server(sender, cmd);
+	} catch (std::exception &ex) {
+		_logfile.append(LOG_DATE, LOG_DARKRED, " Promotion \'Unknown\' -> \'Server\': failed !");
+		sender->send(ErrorCommand("Internal error."));
+		finishConx(sender, false);
+		return;
+	}
+	_logfile.append(LOG_DATE, LOG_BLUE, " Promotion \'Unknown\' -> \'Server\': [" + cmd.servername() + "]");
+	mapName(_servnames, cmd.servername(), sender);
+	if (!sender->isConnect()) {
+		sender->send(PassCommand(whitelistPassword(cmd.servername())));
+		sender->send(ServerCommand(getArgListAccept()));
+		static_cast<Server *>(sender)->token = token;
+		token = Utils::incToken(token);
 	}
 }
 
-void		LocalServer::execPrivmsg(Client *&sender, PrivmsgCommand const &cmd) {
+void		LocalServer::execNick(Client *sender, NickCommand const &cmd) {
+	cmd.isValid();
+	if (!Utils::validNickName(cmd.nickname()))
+		return numericReply(sender, ERR_ERRONEOUSNICKNAME, cmd.nickname());
+	if (_nicknames.count(cmd.nickname()))
+		return numericReply(sender, ERR_NICKNAMEINUSE, cmd.nickname());
+	if (!sender->isRegistered()) {
+		if (sender->nickname.empty()) {
+			sender->nickname = cmd.nickname();
+			if (!howMany(CONX_CLIENT, true))
+				sender->isLocalop(true);
+			numericReply(sender, RPL_WELCOME, sender->fullId());
+			numericReply(sender, RPL_YOURHOST);
+			numericReply(sender, RPL_CREATED);
+			numericReply(sender, RPL_MYINFO);
+		}
+		else {
+			unmapName(_nicknames, sender->nickname);
+			sender->nickname = cmd.nickname();
+		}
+		mapName(_nicknames, sender->nickname, sender);
+	}
+	else {
+		updateChans(sender, cmd);
+		unmapName(_nicknames, sender->nickname);
+		sender->nickname = cmd.nickname();
+		mapName(_nicknames, sender->nickname, sender);
+	}
+}
+
+void		LocalServer::execUser(Client *sender, UserCommand const &cmd) {
+	cmd.isValid();
+	if (!sender->isRegistered()) {
+		if (sender->username.empty()) {
+			sender->username = cmd.username();
+			sender->realname = cmd.realname();
+			if (!howMany(CONX_CLIENT, true))
+				sender->isLocalop(true);
+			numericReply(sender, RPL_WELCOME, sender->fullId());
+			numericReply(sender, RPL_YOURHOST);
+			numericReply(sender, RPL_CREATED);
+			numericReply(sender, RPL_MYINFO);
+		}
+		else {
+			unmapName(_usernames, sender->username);
+			sender->username = cmd.username();
+			unmapName(_realnames, sender->realname);
+			sender->realname = cmd.realname();
+		}
+		mapName(_usernames, sender->username, sender);
+		mapName(_realnames, sender->realname, sender);
+	}
+	else
+		numericReply(sender, ERR_ALREADYREGISTERED);
+}
+void		LocalServer::execPrivmsg(Client *sender, PrivmsgCommand const &cmd) {
 	Channel	*chan;
 	Client	*tmp;
 
 	cmd.isValid();
-	if ((tmp = findClientByName(cmd.target(), CLIENTNAME))) {
+	if ((tmp = findClient(cmd.target(), CLIENTNAME))) {
 		if (tmp->isAway())
 			numericReply(sender, RPL_AWAY, tmp);
 		else
 			tmp->send(PrivmsgCommand(static_cast<Client *>(sender)->fullId(), cmd.args));
 	}
-	else if ((chan = findChannelByName(cmd.target())))
+	else if ((chan = findChannel(cmd.target())))
 		chan->send(static_cast<Client *>(sender), PrivmsgCommand(static_cast<Client *>(sender)->fullId(), cmd.args));
 	else
 		numericReply(sender, ERR_NOSUCHNICK, cmd.target());
 }
 
-void		LocalServer::execNotice(Client *&sender, NoticeCommand const &cmd) {
+void		LocalServer::execNotice(Client *sender, NoticeCommand const &cmd) {
 	Channel	*chan;
 	Client	*tmp;
 
 	cmd.isValid();
-	if ((tmp = findClientByName(cmd.target(), CLIENTNAME))) //change 'getNickname' to 'fullId' if needed later on
+	if ((tmp = findClient(cmd.target(), CLIENTNAME)))
 		tmp->send(NoticeCommand(static_cast<Client *>(sender)->fullId(), cmd.args));
-	else if ((chan = findChannelByName(cmd.target())))
+	else if ((chan = findChannel(cmd.target())))
 		chan->send(static_cast<Client *>(sender), NoticeCommand(static_cast<Client *>(sender)->fullId(), cmd.args));
 	else
 		numericReply(sender, ERR_DISCARDCOMMAND, cmd.target());
 }
 
-void		LocalServer::execQuit(Client *&sender, QuitCommand const &cmd) {
+void		LocalServer::execQuit(Client *sender, QuitCommand const &cmd) {
 	if (sender->isClient()) {
 		updateChans(sender, cmd);
 		sender->send(ErrorCommand("Closing connection"));
@@ -482,26 +651,19 @@ void		LocalServer::execQuit(Client *&sender, QuitCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execPing(Client *&sender, PingCommand const &cmd) { cmd.isValid(); sender->send(PongCommand(hostname())); } //later change hostname for servername
-void		LocalServer::execPong(Client *&sender, PongCommand const &cmd) { cmd.isValid(); } //command is discarded
-void		LocalServer::execMotd(Client *&sender, MotdCommand const &cmd) {
+void		LocalServer::execPing(Client *sender, PingCommand const &cmd) { cmd.isValid(); sender->send(PongCommand(servername)); } //later change hostname for servername
+void		LocalServer::execPong(Client *sender, PongCommand const &cmd) { cmd.isValid(); } //command is discarded
+void		LocalServer::execMotd(Client *sender, MotdCommand const &cmd) {
 	std::ifstream file("motd.txt");
 	std::string input;
 	std::string tmp;
 
 	cmd.isValid();
-	// if (!cmd.target().empty()) { //not mandatory
-	// 	file.close();
-	// 	share()
-	// }
-	if (file.fail()) {
-		file.close();
+	if (!file.is_open())
 		numericReply(sender, ERR_NOMOTD);
-	}
 	else {
 		numericReply(sender, RPL_MOTDSTART, hostname());
-		while (!file.eof()) {
-			std::getline(file, input);
+		while (std::getline(file, input)) {
 			while (!input.empty()) {
 				if (input.length() < MAX_MOTD_READ)
 					input.append(std::string(MAX_MOTD_READ - input.length(), ' '));
@@ -510,12 +672,14 @@ void		LocalServer::execMotd(Client *&sender, MotdCommand const &cmd) {
 				numericReply(sender, RPL_MOTD, tmp);
 			}
 		}
+		if (file.bad())
+			_logfile.append(LOG_DATE, LOG_DARKRED, " Error while reading MOTD file.");
 		numericReply(sender, RPL_ENDOFMOTD);
 		file.close();
 	}
 }
 
-void		LocalServer::execLusers(Client *&sender, LusersCommand const &cmd) {
+void		LocalServer::execLusers(Client *sender, LusersCommand const &cmd) {
 	cmd.isValid();
 
 	numericReply(sender, RPL_LUSERCLIENT);
@@ -525,11 +689,11 @@ void		LocalServer::execLusers(Client *&sender, LusersCommand const &cmd) {
 	numericReply(sender, RPL_LUSERME);
 }
 
-void		LocalServer::execWhois(Client *&sender, WhoisCommand const &cmd) {
+void		LocalServer::execWhois(Client *sender, WhoisCommand const &cmd) {
 	Client	*tmp;
 
 	cmd.isValid();
-	if (!(tmp = findClientByName(cmd.target(), ALLNAME)))
+	if (!(tmp = findClient(cmd.target(), ALLNAME)))
 		numericReply(sender, ERR_NOSUCHNICK, cmd.target());
 	else {
 		if (!tmp->isRegistered())
@@ -546,33 +710,39 @@ void		LocalServer::execWhois(Client *&sender, WhoisCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execJoin(Client *&sender, JoinCommand const &cmd) {
+void		LocalServer::execJoin(Client *sender, JoinCommand const &cmd) {
 	unsigned short code;
+	std::string	names;
+	std::string token;
 	Channel *chan;
 
 	cmd.isValid();
-	if (cmd.target()[0] != '#' && cmd.target()[0] != '&')
-		numericReply(sender, ERR_NOSUCHCHANNEL, cmd.target());
-	else {
-		if (!(chan = findChannelByName(cmd.target())))
-			chan = newChan(sender, cmd.target());
-		else if ((code = chan->join(static_cast<Client *>(sender), cmd))) { // add key arg later for -k mode
-			throw (Command::InvalidCommandException(ERR_DISCARDCOMMAND));
+	names = cmd.target();
+	while(!names.empty()) {
+		token = Utils::getToken(names, ",");
+		if (!Utils::validChanName(token))
+			numericReply(sender, ERR_NOSUCHCHANNEL, token);
+		else {
+			if (!(chan = findChannel(token))) {
+				if (!(chan = newChan(sender, token)))
+					_logfile.append(LOG_DATE, LOG_RED, " New \'Channel\' created: failed !");
+					return;
+			}
+			else if ((code = chan->join(sender))) { // add key arg later for -k mode
+				continue; // treat error codes (banned, not invited, ...)
+			}
+			if (chan->hasTopic())
+				numericReply(sender, RPL_TOPIC, chan);
+			execNames(sender, NamesCommand(NO_PREFIX, chan->getName()));
 		}
-		if (chan->hasTopic())
-			numericReply(sender, RPL_TOPIC, chan);
-		execNames(sender, NamesCommand(NO_PREFIX, chan->getName()));
-		// else {
-		// 	// other errors.
-		// }
 	}
 }
 
-void		LocalServer::execPart(Client *&sender, PartCommand const &cmd) {
+void		LocalServer::execPart(Client *sender, PartCommand const &cmd) {
 	Channel	*chan;
 
 	cmd.isValid();
-	if (!(chan = findChannelByName(cmd.target())))
+	if (!(chan = findChannel(cmd.target())))
 		numericReply(sender, ERR_NOSUCHCHANNEL, cmd.target());
 	else if (!chan->isOnChan(sender))
 		numericReply(sender, ERR_NOTONCHANNEL, cmd.target());
@@ -583,11 +753,11 @@ void		LocalServer::execPart(Client *&sender, PartCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execTopic(Client *&sender, TopicCommand const &cmd) {
+void		LocalServer::execTopic(Client *sender, TopicCommand const &cmd) {
 	Channel	*chan;
 
 	cmd.isValid();
-	if (!(chan = findChannelByName(cmd.target())))
+	if (!(chan = findChannel(cmd.target())))
 		numericReply(sender, ERR_NOSUCHCHANNEL, cmd.target());
 	else if (!chan->isOnChan(static_cast<Client *>(sender)))
 		numericReply(sender, ERR_NOTONCHANNEL, cmd.target());
@@ -605,7 +775,7 @@ void		LocalServer::execTopic(Client *&sender, TopicCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execOppass(Client *&sender, OppassCommand const &cmd) {
+void		LocalServer::execOppass(Client *sender, OppassCommand const &cmd) {
 	if (static_cast<Client *>(sender)->isLocalop()) {
 		cmd.isValid();
 		setOppass(cmd.password());
@@ -614,7 +784,7 @@ void		LocalServer::execOppass(Client *&sender, OppassCommand const &cmd) {
 		numericReply(sender, ERR_NOTLOCALOP);
 }
 
-void		LocalServer::execOper(Client *&sender, OperCommand const &cmd) {
+void		LocalServer::execOper(Client *sender, OperCommand const &cmd) {
 	cmd.isValid();
 	if (!cmd.password().compare(_oppass)) {
 		if (static_cast<Client *>(sender)->isOperator())
@@ -626,20 +796,20 @@ void		LocalServer::execOper(Client *&sender, OperCommand const &cmd) {
 		numericReply(sender, ERR_PASSWDMISMATCH);
 }
 
-void		LocalServer::execMode(Client *&sender, ModeCommand const &cmd) {
+void		LocalServer::execMode(Client *sender, ModeCommand const &cmd) {
 	Channel		*chan;
 	Client		*target;
 	std::string	mode;
 
 	cmd.isValid();
 	if (cmd.argNbr() == 1) {
-		if (!(chan = findChannelByName(cmd.field1())))
+		if (!(chan = findChannel(cmd.field1())))
 			throw (Command::InvalidCommandException(ERR_NOSUCHCHANNEL));
 		numericReply(sender, RPL_CHANNELMODEIS, chan);
 	}
 	else if (cmd.argNbr() == 2) {
 		if (cmd.field1()[0] == '#' || cmd.field1()[0] == '&') {
-			if (!(chan = findChannelByName(cmd.field1())))
+			if (!(chan = findChannel(cmd.field1())))
 				throw (Command::InvalidCommandException(ERR_NOSUCHCHANNEL));
 			mode = cmd.field2();
 			if ((mode[0] != '-' && mode[0] != '+') || mode.size() != 2)
@@ -647,7 +817,7 @@ void		LocalServer::execMode(Client *&sender, ModeCommand const &cmd) {
 			chan->applyModeFlag(static_cast<Client *>(sender), mode[1], (mode[0] == '+' ? true : false));
 		}
 		else {
-			if (!(target = findClientByName(cmd.field1(), NICKNAME)))
+			if (!(target = findClient(cmd.field1(), NICKNAME)))
 				throw (Command::InvalidCommandException(ERR_USERSDONTMATCH));
 			if (target->nickname.compare(static_cast<Client *>(sender)->nickname))
 				throw (Command::InvalidCommandException(ERR_USERSDONTMATCH));
@@ -659,12 +829,12 @@ void		LocalServer::execMode(Client *&sender, ModeCommand const &cmd) {
 		}
 	}
 	else {
-		if (!(chan = findChannelByName(cmd.field1())))
+		if (!(chan = findChannel(cmd.field1())))
 			throw (Command::InvalidCommandException(ERR_NOSUCHCHANNEL));
 		mode = cmd.field2();
 		if ((mode[0] != '-' && mode[0] != '+') || mode.size() != 2)
 			throw (Command::InvalidCommandException(ERR_UNKNOWNMODE));
-		if (!(target = findClientByName(cmd.field3(), NICKNAME)))
+		if (!(target = findClient(cmd.field3(), NICKNAME)))
 			throw (Command::InvalidCommandException(ERR_USERNOTINCHANNEL));
 		else if (!chan->isOnChan(target))
 			throw (Command::InvalidCommandException(ERR_USERNOTINCHANNEL));
@@ -673,7 +843,7 @@ void		LocalServer::execMode(Client *&sender, ModeCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execAway(Client *&sender, AwayCommand const &cmd) {
+void		LocalServer::execAway(Client *sender, AwayCommand const &cmd) {
 	cmd.isValid();
 	if (cmd.argNbr(1)) {
 		if (cmd.message().empty()) {
@@ -692,7 +862,7 @@ void		LocalServer::execAway(Client *&sender, AwayCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execNames(Client *&sender, NamesCommand const &cmd) {
+void		LocalServer::execNames(Client *sender, NamesCommand const &cmd) {
 	std::list<std::string> lst;
 	Channel *chan;
 
@@ -714,7 +884,7 @@ void		LocalServer::execNames(Client *&sender, NamesCommand const &cmd) {
 		}
 	}
 	else {
-		if ((chan = findChannelByName(cmd.target()))) {
+		if ((chan = findChannel(cmd.target()))) {
 			chan->namesList(lst);
 			if (!lst.empty())
 				numericReplyNames(sender, chan->getName(), lst);
@@ -723,7 +893,7 @@ void		LocalServer::execNames(Client *&sender, NamesCommand const &cmd) {
 	}
 }
 
-void		LocalServer::execList(Client *&sender, ListCommand const &cmd) {
+void		LocalServer::execList(Client *sender, ListCommand const &cmd) {
 	Channel *chan;
 
 	cmd.isValid();
@@ -735,13 +905,13 @@ void		LocalServer::execList(Client *&sender, ListCommand const &cmd) {
 		numericReply(sender, RPL_LISTEND);
 	}
 	else {
-		if ((chan = findChannelByName(cmd.target())))
+		if ((chan = findChannel(cmd.target())))
 			numericReply(sender, RPL_LIST, chan);
 		numericReply(sender, RPL_LISTEND);
 	}
 }
 
-void		LocalServer::execWho(Client *&sender, WhoCommand const &cmd) {
+void		LocalServer::execWho(Client *sender, WhoCommand const &cmd) {
 	std::list<Client *> lst;
 	Channel *chan;
 	Client	*tmp;
@@ -755,7 +925,7 @@ void		LocalServer::execWho(Client *&sender, WhoCommand const &cmd) {
 		numericReply(sender, RPL_ENDOFWHO, "*");
 	}
 	else {
-		if ((chan = findChannelByName(cmd.mask()))) {
+		if ((chan = findChannel(cmd.mask()))) {
 			chan->clientsList(lst);
 			for (std::list<Client *>::iterator it = lst.begin(); it != lst.end(); it++)
 				numericReplyWho(sender, chan, (*it));
@@ -764,140 +934,102 @@ void		LocalServer::execWho(Client *&sender, WhoCommand const &cmd) {
 	}
 }
 
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//		 NUMERIC REPLIES
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 void		LocalServer::numericReply(Connection *sender, unsigned short code) {
-	Command ret(hostname(), codeToStr(code), Command::arglist());
+	Command ret(servername, codeToStr(code), Command::arglist());
 
 	ret.addArg(sender->name());
-	if (code == ERR_DISCARDCOMMAND)
-		return;
-	else if (code == RPL_LUSERCLIENT)									// 251
-		ret.addArg("There are " + howManyClient(false) + " users and " + howManyService(false) + " services on " + howManyServer(false, true) + " servers");
-	else if (code == RPL_LUSEROP) {										// 252
-		ret.addArg(howManyOperator());
-		ret.addArg("operator(s) online");
+	switch(code) {
+		case ERR_DISCARDCOMMAND: return;
+		case RPL_YOURHOST:			ret.addArg("Your host is " + servername\
+									+ ", running version " + version); break;
+		case RPL_CREATED:			ret.addArg("This server was created "\
+									+ _logfile.start); break;
+		case RPL_MYINFO:			ret.addArg(servername + " " + version + " "
+									+ std::string(CLIENT_MODE_FLAGS) + " "
+									+ std::string(CHAN_MODE_FLAGS)); break;
+		case RPL_LUSERCLIENT:		ret.addArg("There are " + howManyClient(false)
+									+ " users and " + howManyService(false)
+									+ " services on " + howManyServer(false, true)
+									+ " servers"); break;
+		case RPL_LUSEROP:			ret.addArg(howManyOperator());
+									ret.addArg("operator(s) online"); break;
+		case RPL_LUSERUNKNOWN:		ret.addArg(howManyUnknown());
+									ret.addArg("unknown connection(s)"); break;
+		case RPL_LUSERCHANNELS:		ret.addArg(howManyChannel());
+									ret.addArg("channels formed"); break;
+		case RPL_LUSERME: 			ret.addArg("I have " + howManyClient(true)
+									+ " clients and " + howManyServer(true, false)
+									+ " servers"); break;
+		case RPL_UNAWAY: 			ret.addArg("You are no longer marked as being away"); break;
+		case RPL_NOWAWAY: 			ret.addArg("You have been marked as being away"); break;
+		case RPL_LISTEND: 			ret.addArg("End of list"); break;
+		case RPL_ENDOFMOTD: 		ret.addArg("End of MOTD command"); break;
+		case RPL_YOUREOP: 			ret.addArg("You are now an IRC operator"); break;
+		case ERR_NOORIGIN: 			ret.addArg("No origin specified"); break;
+		case ERR_NOTEXTTOSEND: 		ret.addArg("No text to send"); break;
+		case ERR_NOMOTD: 			ret.addArg("MOTD file is missing"); break;
+		case ERR_NONICKNAMEGIVEN: 	ret.addArg("No nickname given"); break;
+		case ERR_NOTREGISTERED: 	ret.addArg("You have not registered"); break;
+		case ERR_ALREADYREGISTERED: ret.addArg("Unauthorized command (already registered)"); break;
+		case ERR_PASSWDMISMATCH: 	ret.addArg("Wrong password"); break;
+		case ERR_NOTLOCALOP: 		ret.addArg("You\'re not a local operator"); break;
+		case ERR_UMODEUNKNOWNFLAG: 	ret.addArg("Unknown MODE flag"); break;
+		case ERR_USERSDONTMATCH: 	ret.addArg("Cannot change mode for other users"); break;
+		default: return;
 	}
-	else if (code == RPL_LUSERUNKNOWN) {								// 253
-		ret.addArg(howManyUnknown());
-		ret.addArg("unknown connection(s)");
-	}
-	else if (code == RPL_LUSERCHANNELS) {								// 254
-		ret.addArg(howManyChannel());
-		ret.addArg("channels formed");
-	}
-	else if (code == RPL_LUSERME)										// 251
-		ret.addArg("I have " + howManyClient(true) + " clients and " + howManyServer(true, false) + " servers");
-	else if (code == RPL_UNAWAY)										// 305
-		ret.addArg("You are no longer marked as being away");
-	else if (code == RPL_NOWAWAY)										// 306
-		ret.addArg("You have been marked as being away");
-	else if (code == RPL_LISTEND)										// 323
-		ret.addArg("End of list");
-	else if (code == RPL_ENDOFMOTD)										// 376
-		ret.addArg("End of MOTD command");
-	else if (code == RPL_YOUREOP)										// 381
-		ret.addArg("You are now an IRC operator");
-	else if (code == ERR_NOORIGIN)										// 409
-		ret.addArg("No origin specified");
-	else if (code == ERR_NOTEXTTOSEND)									// 412
-		ret.addArg("No text to send");
-	else if (code == ERR_NOMOTD)										// 422
-		ret.addArg("MOTD file is missing");
-	else if (code == ERR_NONICKNAMEGIVEN)								// 431
-		ret.addArg("No nickname given");
-	else if (code == ERR_NOTREGISTERED)									// 451
-		ret.addArg("You have not registered");
-	else if (code == ERR_ALREADYREGISTERED)								// 462
-		ret.addArg("Unauthorized command (already registered)");
-	else if (code == ERR_PASSWDMISMATCH)								// 464
-		ret.addArg("Wrong password");
-	else if (code == ERR_NOTLOCALOP)									// 486
-		ret.addArg("You\'re not a local operator");
-	else if (code == ERR_UMODEUNKNOWNFLAG)								// 501
-		ret.addArg("Unknown MODE flag");
-	else if (code == ERR_USERSDONTMATCH)								// 502
-		ret.addArg("Cannot change mode for other users");
-	else
-		return;
 	sender->send(ret);
 }
 
 void		LocalServer::numericReply(Connection *sender, unsigned short code, std::string const &field) {
-	Command ret(hostname(), codeToStr(code), Command::arglist());
+	Command ret(servername, codeToStr(code), Command::arglist());
 
 	ret.addArg(sender->name());
-	if (code == ERR_DISCARDCOMMAND)
-		return;
-	else if (code == RPL_WELCOME)										// 001
-		ret.addArg("Welcome to the PixTillz\'s Internet Relay Network " + field);
-	else if (code == RPL_WHOISOPERATOR) {								// 313
-		ret.addArg(field);
-		ret.addArg("is an IRC operator");
+	switch(code) {
+		case ERR_DISCARDCOMMAND:
+			return;
+		case RPL_WELCOME: 			ret.addArg("Welcome to the PixTillz\'s Internet Relay Network " + field); break;
+		case RPL_WHOISOPERATOR: 	ret.addArg(field);
+									ret.addArg("is an IRC operator"); break;
+		case RPL_ENDOFWHO: 			ret.addArg(field);
+									ret.addArg("End of WHO list"); break;
+		case RPL_ENDOFWHOIS: 		ret.addArg(field);
+									ret.addArg("End of WHOIS list"); break;
+		case RPL_NOTOPIC: 			ret.addArg(field);
+									ret.addArg("No topic is set"); break;
+		case RPL_ENDOFNAMES: 		ret.addArg(field);
+									ret.addArg("End of NAMES list"); break;
+		case RPL_MOTD: 				ret.addArg("- " + field + "-"); break;
+		case RPL_MOTDSTART: 		ret.addArg("- " + field + " Message of the day -"); break;
+		case ERR_NOSUCHNICK: 		ret.addArg(field);
+									ret.addArg("No such nickname/channel"); break;
+		case ERR_NOSUCHSERVER: 		ret.addArg(field);
+									ret.addArg("No such server"); break;
+		case ERR_NOSUCHCHANNEL: 	ret.addArg(field);
+									ret.addArg("No such channel"); break;
+		case ERR_CANNOTSENDTOCHAN: 	ret.addArg(field);
+									ret.addArg("Cannot send to channel"); break;
+		case ERR_NORECIPIENT: 		ret.addArg("No recipient given (" + field + ")"); break;
+		case ERR_UNKNOWNCOMMAND: 	ret.addArg(field);
+									ret.addArg("Unknown command"); break;
+		case ERR_ERRONEOUSNICKNAME: ret.addArg(field);
+									ret.addArg("Erroneous nickname"); break;
+		case ERR_NICKNAMEINUSE: 	ret.addArg(field);
+									ret.addArg("Nickname is already in use"); break;
+		case ERR_NOTONCHANNEL: 		ret.addArg(field);
+									ret.addArg("You\'re not on that channel"); break;
+		case ERR_WRONGPARAMSNUMBER: ret.addArg(field);
+									ret.addArg("Wrong number of parameters"); break;
+		default: return;
 	}
-	else if (code == RPL_ENDOFWHO) {									// 315
-		ret.addArg(field);
-		ret.addArg("End of WHO list");
-	}
-	else if (code == RPL_ENDOFWHOIS) {									// 318
-		ret.addArg(field);
-		ret.addArg("End of WHOIS list");
-	}
-	else if (code == RPL_NOTOPIC) {										// 331
-		ret.addArg(field);
-		ret.addArg("No topic is set");
-	}
-	else if (code == RPL_ENDOFNAMES) {									// 366
-		ret.addArg(field);
-		ret.addArg("End of NAMES list");
-	}
-	else if (code == RPL_MOTD)											// 372
-		ret.addArg("- " + field + "-");
-	else if (code == RPL_MOTDSTART)										// 375 
-		ret.addArg("- " + field + " Message of the day -");
-	else if (code == ERR_NOSUCHNICK) {									// 401
-		ret.addArg(field);
-		ret.addArg("No such nickname/channel");
-	}
-	else if (code == ERR_NOSUCHSERVER) {								// 402
-		ret.addArg(field);
-		ret.addArg("No such server");
-	}
-	else if (code == ERR_NOSUCHCHANNEL) {								// 403
-		ret.addArg(field);
-		ret.addArg("No such channel");
-	}
-	else if (code == ERR_CANNOTSENDTOCHAN) {							// 404
-		ret.addArg(field);
-		ret.addArg("Cannot send to channel");
-	}
-	else if (code == ERR_NORECIPIENT)									// 411
-		ret.addArg("No recipient given (" + field + ")");
-	else if (code == ERR_UNKNOWNCOMMAND) {								// 421
-		ret.addArg(field);
-		ret.addArg("Unknown command");
-	}
-	else if (code == ERR_ERRONEOUSNICKNAME) {							// 432
-		ret.addArg(field);
-		ret.addArg("Erroneous nickname");
-	}
-	else if (code == ERR_NICKNAMEINUSE) {								// 433
-		ret.addArg(field);
-		ret.addArg("Nickname is already in use");
-	}
-	else if (code == ERR_NOTONCHANNEL) {								// 442
-		ret.addArg(field);
-		ret.addArg("You\'re not on that channel");
-	}
-	else if (code == ERR_WRONGPARAMSNUMBER){							// 461
-		ret.addArg(field);
-		ret.addArg("Wrong number of parameters");
-	}
-	else
-		return;
 	sender->send(ret);
 }
 
 void		LocalServer::numericReply(Connection *sender, unsigned short code, Command const &cmd) {
-	Command ret(hostname(), codeToStr(code), Command::arglist());
+	Command ret(servername, codeToStr(code), Command::arglist());
 
 	ret.addArg(sender->name());
 	if (code == ERR_UNKNOWNMODE) {										// 472
@@ -921,7 +1053,7 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code, Command
 }
 
 void		LocalServer::numericReply(Connection *sender, unsigned short code, Channel *chan) {
-	Command ret(hostname(), codeToStr(code), Command::arglist());
+	Command ret(servername, codeToStr(code), Command::arglist());
 
 	ret.addArg(sender->name());
 	if (code == RPL_TOPIC) {
@@ -934,7 +1066,7 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code, Channel
 	}
 	else if (code == RPL_LIST) {
 		ret.addArg(chan->getName());
-		ret.addArg(nbrToStr(chan->size()));
+		ret.addArg(Utils::nbrToStr(chan->size()));
 		if (chan->hasTopic())
 			ret.addArg(chan->getTopic());
 	}
@@ -944,7 +1076,7 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code, Channel
 }
 
 void		LocalServer::numericReply(Connection *sender, unsigned short code, Client *target) {
-	Command ret(hostname(), codeToStr(code), Command::arglist());
+	Command ret(servername, codeToStr(code), Command::arglist());
 
 	ret.addArg(sender->name());
 	if (code == RPL_WHOISUSER) {										// 311
@@ -957,7 +1089,7 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code, Client 
 	else if (code == RPL_WHOISSERVER) {									// 312
 		ret.addArg(target->nickname);
 		if (!target->isLink()) //else get link hostname
-			ret.addArg(hostname());
+			ret.addArg(servername);
 		ret.addArg("Active on this server"); // change it to whatever information about the client later
 	}
 	else if (code == RPL_AWAY) {
@@ -967,12 +1099,12 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code, Client 
 	sender->send(ret);
 }
 
-void		LocalServer::numericReplyNames(Client *&sender, std::string const &chan, std::list<std::string> &names) {
+void		LocalServer::numericReplyNames(Client *sender, std::string const &chan, std::list<std::string> &names) {
 	Command::arglist_it itnames;
 	std::string			tmp;
 
 	while (!names.empty()) {
-		Command ret(Command(hostname(), codeToStr(RPL_NAMESREPLY), Command::arglist()));
+		Command ret(Command(servername, codeToStr(RPL_NAMESREPLY), Command::arglist()));
 		itnames = names.begin();
 		ret.addArg(sender->nickname);
 		ret.addArg("=");
@@ -989,14 +1121,14 @@ void		LocalServer::numericReplyNames(Client *&sender, std::string const &chan, s
 	}
 }
 
-void		LocalServer::numericReplyWho(Client *&sender, Channel *chan, Client *target) {
-	Command ret(hostname(), codeToStr(RPL_WHOREPLY), Command::arglist());
+void		LocalServer::numericReplyWho(Client *sender, Channel *chan, Client *target) {
+	Command ret(servername, codeToStr(RPL_WHOREPLY), Command::arglist());
 
 	ret.addArg(sender->nickname);
 	ret.addArg((chan ? chan->getName() : "*"));
 	ret.addArg(target->username);
 	ret.addArg(target->hostname());
-	ret.addArg(hostname());
+	ret.addArg(servername);
 	ret.addArg(target->nickname);
 	ret.addArg((target->isAway() ? "G" : "H"));
 	if (target->isOperator())
@@ -1007,11 +1139,12 @@ void		LocalServer::numericReplyWho(Client *&sender, Channel *chan, Client *targe
 		else if (chan->isModerated() && chan->canTalk(target))
 			ret.addArg("+");
 	}
-	ret.addArg("0 " + target->realname);
+	ret.addArg(Utils::nbrToStr(target->hop));
+	ret.addArg(target->realname);
 	sender->send(ret);
 }
 
-void		LocalServer::numericReplyWhoischannel(Client *&sender, Client *target, std::list<std::string> chans) {
+void		LocalServer::numericReplyWhoischannel(Client *sender, Client *target, std::list<std::string> chans) {
 	std::ostringstream str;
 	unsigned int count;
 	Channel *chan;
@@ -1019,8 +1152,8 @@ void		LocalServer::numericReplyWhoischannel(Client *&sender, Client *target, std
 	count = 0;
 	str.str(":");
 	while (!chans.empty()) {
-		Command ret(hostname(), codeToStr(RPL_WHOISCHANNELS), Command::arglist());
-		if (!(chan = findChannelByName(chans.front())))
+		Command ret(servername, codeToStr(RPL_WHOISCHANNELS), Command::arglist());
+		if (!(chan = findChannel(chans.front())))
 			chans.pop_front();
 		else {
 			count++;
@@ -1051,15 +1184,13 @@ void		LocalServer::updateChans(Client *sender, Command const &cmd) {
 	}
 }
 
-std::string	const LocalServer::nbrToStr(unsigned int nbr) const { return static_cast<std::ostringstream *>(&(std::ostringstream() << nbr))->str(); }
-
 std::string	const LocalServer::codeToStr(unsigned short code) const { 
 	if (code < 10)
-		return ("00" + nbrToStr(static_cast<unsigned int>(code)));
+		return ("00" + Utils::nbrToStr(static_cast<unsigned int>(code)));
 	else if (code < 100)
-		return ("0" + nbrToStr(static_cast<unsigned int>(code)));
+		return ("0" + Utils::nbrToStr(static_cast<unsigned int>(code)));
 	else
-		return nbrToStr(static_cast<unsigned int>(code));
+		return Utils::nbrToStr(static_cast<unsigned int>(code));
 }
 
 void		LocalServer::namesListAloneClient(std::list<std::string> &lst) const {
@@ -1069,10 +1200,6 @@ void		LocalServer::namesListAloneClient(std::list<std::string> &lst) const {
 			lst.push_back(static_cast<Client *>(*it)->nickname);
 	}
 }
-
-// ########################################
-// 				 EXECEPTIONS
-// ########################################
 
 // ########################################
 // 					DEBUG
@@ -1087,9 +1214,9 @@ void		LocalServer::showLocalServer(void) const {
 	DEBUG_BAR_DISPC(COUT, '=', 45, ORANGE);
 }
 
-void		LocalServer::showNames(clientnames names) const {
+void		LocalServer::showNames(namesmap names) const {
 	DEBUG_BAR_DISPC(COUT, '=', 45, ORANGE);
-	for (clientnames::const_iterator it = names.begin(); it != names.end(); it++) {
+	for (namesmap::const_iterator it = names.begin(); it != names.end(); it++) {
 		DEBUG_LDISPB(COUT, "\t->", it->first, '\'');
 	}
 	DEBUG_BAR_DISPC(COUT, '=', 45, ORANGE);
@@ -1121,9 +1248,11 @@ void		LocalServer::showNet(void) const {
 		for (conxlist_cit it = _conxs.begin(); it != _conxs.end(); it++) {
 			tmp = *it;
 			if (tmp->isClient())
-				DEBUG_LDISPCB(COUT, "Client  ~> ", *(static_cast<Client *>(tmp)), GREEN, '{');
+				DEBUG_LDISPCB(COUT, "Client   ", *(static_cast<Client *>(tmp)), GREEN, '{');
+			else if (tmp->isServer())
+				DEBUG_LDISPCB(COUT, "Server   ", *(static_cast<Server *>(tmp)), BLUE, '{');
 			else
-				DEBUG_LDISPCB(COUT, "Pending ~> ", *tmp, ORANGE, '{');
+				DEBUG_LDISPCB(COUT, "Pending  ", *tmp, ORANGE, '{');
 		}
 	}
 	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);

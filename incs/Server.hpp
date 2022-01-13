@@ -15,7 +15,7 @@ public:
 	std::string		token;
 	std::string		implem;
 	std::string		version;
-	std::string		info;
+	std::string		desc;
 
 	// ____________Canonical Form____________
     virtual ~Server(void);
@@ -23,11 +23,14 @@ public:
     Server  &operator=(Server const &src);
 
 	// _____________Constructor______________
-    Server(Connection *&src, Connection *link, ServerCommand const &cmd);
+    Server(Connection *&src, ServerCommand const &cmd);
+    Server(Server *link, ServerCommand const &cmd);
+    Server(std::string const &host, std::string const &port, u_int16_t family);
 
 	// __________Member functions____________
 	virtual std::string const &name(void) const;
-	Command::arglist const getArgList(void) const;
+	Command::arglist const getArgListConnect(void) const;
+	Command::arglist const getArgListAccept(void) const;
 
 private:
 	Server(void);

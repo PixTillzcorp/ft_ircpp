@@ -107,87 +107,48 @@ TESTDIR = tests_exec
 
 INCDIR = incs
 
-HEADERS =	Connection.hpp	\
-			FdSet.hpp		\
-			Message.hpp		\
-			ServerInfo.hpp	\
-			AddrInfo.hpp	\
-			SockInfo.hpp	\
-			SockStream.hpp	\
-			Command.hpp		\
-			CommandLib.hpp	\
-			Server.hpp		\
-			Client.hpp		\
-			Channel.hpp
+HEADERS =	Connection.hpp Utils.hpp FdSet.hpp Message.hpp ServerInfo.hpp	\
+			AddrInfo.hpp SockInfo.hpp SockStream.hpp Command.hpp			\
+			CommandLib.hpp ConfigParse.hpp Server.hpp Client.hpp Channel.hpp\
+			LogFile.hpp
 
 SRCO_TEST_TEST = test_test.o
 
 SRCO_TEST_QUICK = test_quick.o
 
-SRCO_TEST_FDSET =	FdSet.o		\
-					test_fdset.o
+SRCO_TEST_UTILS = test_utils.o Utils.o
 
-SRCO_TEST_MESSAGE =	Message.o		\
-					test_message.o
+SRCO_TEST_LOGFILE = test_logfile.o LogFile.o
 
-SRCO_TEST_SOCKSTREAM =	Message.o		\
-						AddrInfo.o		\
-						SockInfo.o		\
-						SockStream.o	\
+SRCO_TEST_CONFIGPARSER = test_configparser.o ConfigParser.o
+
+SRCO_TEST_FDSET =	FdSet.o test_fdset.o
+
+SRCO_TEST_MESSAGE =	Message.o test_message.o
+
+SRCO_TEST_SOCKSTREAM =	Message.o AddrInfo.o SockInfo.o SockStream.o		\
 						test_sockstream.o
 
-SRCO_TEST_SOCKINFO =	SockInfo.o		\
-						AddrInfo.o		\
-						test_sockinfo.o
+SRCO_TEST_SOCKINFO =	SockInfo.o AddrInfo.o test_sockinfo.o Utils.o
 
-SRCO_TEST_CONNECTION = 	Message.o		\
-						AddrInfo.o		\
-						SockInfo.o		\
-						SockStream.o	\
-						Connection.o	\
-						Command.o		\
-						test_connection.o
+SRCO_TEST_CONNECTION = 	Message.o AddrInfo.o SockInfo.o	SockStream.o 		\
+						Connection.o Command.o test_connection.o
 
-SRCO_TEST_SELECTMODULE = 	Message.o		\
-							FdSet.o			\
-							AddrInfo.o		\
-							SockInfo.o		\
-							SockStream.o	\
-							Connection.o	\
-							Command.o		\
-							SelectModule.o	\
-							test_selectmodule.o
+SRCO_TEST_SELECTMODULE = 	Message.o FdSet.o AddrInfo.o SockInfo.o			\
+							SockStream.o Connection.o Command.o				\
+							SelectModule.o test_selectmodule.o Utils.o
 
-SRCO_TEST_LOCALSERVER = 	Message.o		\
-							FdSet.o			\
-							AddrInfo.o		\
-							SockInfo.o		\
-							SockStream.o	\
-							Connection.o	\
-							Client.o		\
-							Command.o		\
-							CommandLib.o	\
-							SelectModule.o	\
-							LocalServer.o	\
+SRCO_TEST_LOCALSERVER = 	Message.o FdSet.o AddrInfo.o SockInfo.o			\
+							SockStream.o Connection.o Client.o Command.o	\
+							CommandLib.o SelectModule.o LocalServer.o		\
 							test_localserver.o
 
-SRCO_TEST_COMMAND =	Message.o		\
-					Command.o		\
-					test_command.o
+SRCO_TEST_COMMAND =	Message.o Command.o test_command.o
 
-SRCO_SVR = 	Message.o		\
-			FdSet.o			\
-			AddrInfo.o		\
-			SockInfo.o		\
-			SockStream.o	\
-			Connection.o	\
-			Client.o		\
-			Command.o		\
-			CommandLib.o	\
-			SelectModule.o	\
-			LocalServer.o	\
-			Channel.o		\
-			main.o
+SRCO_SVR = 	Message.o Utils.o FdSet.o AddrInfo.o SockInfo.o SockStream.o	\
+			Connection.o Client.o Server.o Command.o CommandLib.o			\
+			ConfigParser.o SelectModule.o LocalServer.o Channel.o main.o	\
+			LogFile.o
 
 # SRCO_CLT =	$(addprefix $(OBJDIR)/, client_main.o)
 

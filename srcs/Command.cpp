@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Command.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-21 12:59:56 }--------------------------**
-**----- Updated -------------{ 2021-12-10 04:14:40 }--------------------------**
+**----- Updated -------------{ 2022-01-09 16:17:28 }--------------------------**
 ********************************************************************************
 */
 
@@ -37,7 +37,7 @@ Command &Command::operator=(Command const &cpy) {
 }
 
 // _____________Constructor______________
-Command::Command(Message *msg) : inherited(*msg) {
+Command::Command(Message msg) : inherited(msg) {
 	std::string data = content;
 	std::string del = " ";
 	std::string shard;
@@ -62,17 +62,18 @@ Command::Command(Message *msg) : inherited(*msg) {
 			{
 				shard = shard.substr(1, std::string::npos);
 				del = " :";
-				if (data.empty())
-					args.push_back(shard);
-				else {
-					shard += " " + data.substr(0, data.find(del));
-					data.erase(0, data.find(del) + (data.size() == data.substr(0, data.find(del)).size() ? 0 : del.size()));
-					args.push_back(shard);
+				if (!shard.empty()) {
+					if (data.empty())
+						args.push_back(shard);
+					else {
+						shard += " " + data.substr(0, data.find(del));
+						data.erase(0, data.find(del) + (data.size() == data.substr(0, data.find(del)).size() ? 0 : del.size()));
+						args.push_back(shard);
+					}
 				}
 			}
 		}
 	}
-	delete msg;
 }
 
 Command::Command(std::string const &prefix, std::string const &command, std::list<std::string> const &args) :	Message(""),
@@ -179,7 +180,8 @@ std::ostream	&operator<<(std::ostream &flux, Command const &src) {
 	// std::list<std::string>::const_iterator it = src.getArgs().cbegin();
 
 	// flux << "\033[38;5;57m+++++++++++ Command +++++++++++++" << std::endl;
-	flux << static_cast<Message const>(src);
+	flux << "[" << static_cast<Message const>(src) << "]";
+	flux << "args[" << src.argNbr() << "]";
 	// flux << "Cmd" << std::endl << "{" << std::endl;
 	// flux << "\tprefix: [" + src.getPrefix() + "]" << std::endl;
 	// flux << "\tcommand: [" + src.getCommand() + "]" << std::endl;

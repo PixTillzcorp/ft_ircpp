@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Message.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-11 16:27:23 }--------------------------**
-**----- Updated -------------{ 2021-12-09 18:55:48 }--------------------------**
+**----- Updated -------------{ 2022-01-08 05:05:43 }--------------------------**
 ********************************************************************************
 */
 
@@ -42,7 +42,7 @@ Message::Message(std::string const &content) : content(content) {
 bool			Message::isWritten(void) { return (_received && content.empty()); }
 
 size_t			Message::load(std::string &src) {
-	if (!_received && !isFull())
+	if (!src.empty() && !_received && !isFull())
 	{
 		src.erase(std::remove_if(src.begin(), src.end(), isNotGraph), src.end());
 		if (content.size() + src.size() >= MMAX_LEN)

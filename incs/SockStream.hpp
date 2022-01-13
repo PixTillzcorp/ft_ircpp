@@ -9,7 +9,7 @@
 
 #include "Message.hpp"
 
-#define READ_DELAY (CLOCKS_PER_SEC * 0.2f)
+// #define READ_DELAY (CLOCKS_PER_SEC * 0.2f)
 
 class SockStream {
 public: // #####################################################################
@@ -24,9 +24,9 @@ public: // #####################################################################
 	SockStream(int const sock);
 
 	// __________Member functions____________
-	bool read(void);
-	void write(void) throw(SendFunctionException);
-	Message *getLastMessage(void);
+	bool read(void) throw(FailRecv);
+	void write(void) throw(FailSend);
+	Message getLastMessage(void);
 	void queueMessage(Message msg);
 
 	bool hasInputMessage(void) const;
@@ -48,14 +48,27 @@ public: // #####################################################################
 	void				setWmsg(std::queue<Message> const &src);
 
 	// ______________Exceptions______________
-	class SendFunctionException : public std::exception { // send() return -1
+	typedef class SendFunctionException : public std::exception { // send() return -1
 	public:
+		typedef std::exception inherited;
+
 		virtual ~SendFunctionException(void) throw();
 		SendFunctionException(void);
 		SendFunctionException(SendFunctionException const &src);
 		SendFunctionException &operator=(SendFunctionException const &src);
 		virtual const char *what() const throw();
-	};
+	} FailSend;
+
+	typedef class RecvFunctionException : public std::exception { // recv() return -1
+	public:
+		typedef std::exception inherited;
+		
+		virtual ~RecvFunctionException(void) throw();
+		RecvFunctionException(void);
+		RecvFunctionException(RecvFunctionException const &src);
+		RecvFunctionException &operator=(RecvFunctionException const &src);
+		virtual const char *what() const throw();
+	} FailRecv;
 
 
 private: // ####################################################################

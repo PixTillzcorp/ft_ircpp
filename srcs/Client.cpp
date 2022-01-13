@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2021-12-10 05:35:43 }--------------------------**
+**----- Updated -------------{ 2022-01-09 22:05:27 }--------------------------**
 ********************************************************************************
 */
 
@@ -36,7 +36,6 @@ Client::Client(Connection *&src, NickCommand const &cmd) : inherited(*src), mode
 	isClient(true);
 	nickname = cmd.nickname();
 	delete src;
-	src = this;
 }
 
 Client::Client(Connection *&src, UserCommand const &cmd) : inherited(*src), modes(CLIENT_NOMODE) {
@@ -44,7 +43,6 @@ Client::Client(Connection *&src, UserCommand const &cmd) : inherited(*src), mode
 	username = cmd.username();
 	realname = cmd.realname();
 	delete src;
-	src = this;
 }
 
 // __________Member functions____________
@@ -92,7 +90,7 @@ bool				Client::isAway(void) const			{ return (modes & CLIENT_AWAY); }
 bool				Client::isInvisible(void) const		{ return (modes & CLIENT_INVISIBLE); }
 bool				Client::isWallops(void) const		{ return (modes & CLIENT_WALLOPS); }
 bool				Client::isRestricted(void) const	{ return (modes & CLIENT_RESTRICTED); }
-bool				Client::isOperator(void) const		{ return (modes & CLIENT_OPERATOR); }
+bool				Client::isOperator(void) const		{ return (modes & CLIENT_OPERATOR || isLocalop()); }
 bool				Client::isLocalop(void) const		{ return (modes & CLIENT_LOCALOP); }
 
 void				Client::isAway(bool set)			{ applyMode(CLIENT_AWAY, set); }

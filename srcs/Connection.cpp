@@ -11,11 +11,11 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2021-12-11 02:01:28 }--------------------------**
+**----- Updated -------------{ 2022-01-12 12:12:02 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/Connection.hpp"
+#include "Connection.hpp"
 
 // ____________Canonical Form____________
 Connection::~Connection(void) { return; }
@@ -32,23 +32,28 @@ Connection	&Connection::operator=(Connection const &cpy) {
 }
 
 // ____________Constructors______________
-Connection::Connection(std::string const &port, u_int16_t family) throw(Connection::ConxInit) :
-	status(CONX_LOCAL | (family == AF_INET6 ? CONX_IPV6 : CONX_NOFLAG)), link(NO_LINK) {
+Connection::Connection(std::string const &host, std::string const &port, u_int16_t family) throw(Connection::ConxInit) :
+	status(family == AF_INET6 ? CONX_IPV6 : CONX_NOFLAG), link(NO_LINK), hop(1) {
 	int yes = 1;
 	int	sock;
 
-	try { info = SockInfo("", port, family, BIND); }
+	try { info = SockInfo(host, port, family, (host.empty() ? BIND : CONNECT)); }
 	catch (std::exception &ex) { throw(Connection::ConxInit("SockInfo() constructor failed.")); }
 	if ((sock = socket(info.family(), info.socktype(), info.protocol())) == -1)
 		throw(Connection::ConxInit("socket() function failed."));
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
-		throw(Connection::ConxInit("setsockopt() function failed."));
-	if (setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(yes)) == -1)
-		throw(Connection::ConxInit("setsockopt() function failed."));
-	if (bind(sock, info.sockaddr(), info.addrLen()) == -1)
-		throw(Connection::ConxInit("bind() function failed."));
-	if (listen(sock, MAX_PENDING_CONNECTION) == -1)
-		throw(Connection::ConxInit("listen() function failed."));
+	if (host.empty()) {
+		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
+			throw(Connection::ConxInit("setsockopt() function failed."));
+		if (setsockopt(sock, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(yes)) == -1)
+			throw(Connection::ConxInit("setsockopt() function failed."));
+		if (bind(sock, info.sockaddr(), info.addrLen()) == -1)
+			throw(Connection::ConxInit("bind() function failed."));
+		if (listen(sock, MAX_PENDING_CONNECTION) == -1)
+			throw(Connection::ConxInit("listen() function failed."));
+	} else {
+		if (connect(sock, info.sockaddr(), info.addrLen()) == -1)
+			throw(Connection::ConxInit("connect() function failed."));
+	}
 	try { stream = SockStream(sock); }
 	catch (std::exception &ex) { throw(Connection::ConxInit("SockStream() constructor failed.")); }
 }
@@ -65,7 +70,6 @@ Connection::Connection(int lsock) throw(Connection::ConxInit) : status(0), link(
 		info = SockInfo(output_addr, ACCEPT);
 		stream = SockStream(sock);
 	} catch (std::exception &ex) {
-		std::cout << ex.what() << std::endl;
 		throw(Connection::ConxInit("SockInfo() or SockStream() constructor failed."));
 	}
 }
@@ -85,19 +89,19 @@ bool	Connection::hasInputMessage(void) const { return (stream.hasInputMessage())
 void	Connection::clearMessages(void) { stream.clear(); }
 void	Connection::send(Message const &msg) { stream.queueMessage(msg); }
 void	Connection::send(Command const &cmd) { stream.queueMessage(cmd.message()); }
-Message *Connection::getLastMessage(void) { return (stream.getLastMessage()); }
-Command *Connection::getLastCommand(void) {
+Message Connection::getLastMessage(void) { return (stream.getLastMessage()); }
+Command Connection::getLastCommand(void) {
 	if (hasInputMessage()) {
-		return (new Command(stream.getLastMessage()));
+		return (Command(stream.getLastMessage()));
 	}
-	else
-		return (nullptr);
+	return (Command(NO_PREFIX, "", ""));
 }
 
 bool	Connection::isLocal(void) const			{ return (status & CONX_LOCAL); }
 bool	Connection::isServer(void) const		{ return (status & CONX_SERVER); }
 bool	Connection::isClient(void) const		{ return (status & CONX_CLIENT); }
 bool	Connection::isService(void) const		{ return (status & CONX_SERVICE); }
+bool	Connection::isConnect(void) const		{ return (status & CONX_CONNECT); }
 bool	Connection::isIPv6(void) const			{ return (status & CONX_IPV6); }
 bool	Connection::isAuthentified(void) const	{ return (status & CONX_AUTHEN); }
 bool	Connection::isFinished(void) const		{ return (status & CONX_FINISH); }
@@ -108,16 +112,31 @@ void	Connection::isLocal(bool set)			{ applyFlag(CONX_LOCAL, set); }
 void	Connection::isServer(bool set)			{ applyFlag(CONX_SERVER, set); }
 void	Connection::isClient(bool set)			{ applyFlag(CONX_CLIENT, set); }
 void	Connection::isService(bool set)			{ applyFlag(CONX_SERVICE, set); }
+void	Connection::isConnect(bool set)			{ applyFlag(CONX_CONNECT, set); }
 void	Connection::isIPv6(bool set)			{ applyFlag(CONX_IPV6, set); }
 void	Connection::isAuthentified(bool set)	{ applyFlag(CONX_AUTHEN, set); }
 void	Connection::isFinished(bool set)		{ applyFlag(CONX_FINISH, set); }
 
-bool	Connection::checkStatus(unsigned short check) const { return (status & check); }
+bool	Connection::checkStatus(unsigned short check) const {
+	if (check == CONX_PENDING)
+		return (isPending());
+	return (status & check);
+}
 void	Connection::applyFlag(unsigned short flag, bool set) {
 	if (!set)
 		status ^= ((status ^ flag) > status ? CONX_NOFLAG : flag);
 	else
 		status |= flag;
+}
+
+void	Connection::end(void) throw(FailClose) {
+	if (!isLink()) {
+		if (close(sock()) == -1) {
+			delete this;
+			throw(Connection::FailClose());
+		}
+	}
+	delete this;
 }
 
 // ########################################
@@ -138,6 +157,17 @@ const char *Connection::ConxInit::what() const throw() {
 	return (content.c_str());
 }
 
+Connection::FailClose::~CloseSocketException(void) throw() { return; }
+Connection::FailClose::CloseSocketException(void) { return; }
+Connection::FailClose::CloseSocketException(CloseSocketException const &src) : std::exception(static_cast<std::exception const &>(src)) { return; }
+Connection::FailClose &Connection::FailClose::operator=(CloseSocketException const &src) {
+	static_cast<std::exception &>(*this) = static_cast<std::exception const &>(src);
+	return *this;
+}
+const char *Connection::FailClose::what() const throw() {
+	return ("close() function failed.");
+}
+
 // ########################################
 // 					DEBUG
 // ########################################
@@ -148,7 +178,7 @@ std::ostream &operator<<(std::ostream &flux, Connection const &src) {
 	flux << (src.isServer() ? "1" : "0");
 	flux << (src.isClient() ? "1" : "0");
 	flux << (src.isService() ? "1" : "0");
-	flux << ".";
+	flux << (src.isConnect() ? "1" : "0");
 	flux << (src.isIPv6() ? "1" : "0");
 	flux << (src.isAuthentified() ? "1" : "0");
 	flux << (src.isFinished() ? "1" : "0");
