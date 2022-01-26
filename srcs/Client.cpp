@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2022-01-09 22:05:27 }--------------------------**
+**----- Updated -------------{ 2022-01-26 03:07:43 }--------------------------**
 ********************************************************************************
 */
 
@@ -45,6 +45,8 @@ Client::Client(Connection *&src, UserCommand const &cmd) : inherited(*src), mode
 	delete src;
 }
 
+Client::Client(Connection *link, size_t hop) : inherited(link, CONX_CLIENT, hop) { return; }
+
 // __________Member functions____________
 std::string const	&Client::name(void) const {
 	if (isRegistered())
@@ -64,6 +66,26 @@ std::string const	Client::fullId(void) const {
 		return std::string();
 	ss << nickname << '!' << username << '@' << hostname();
 	return (ss.str());
+}
+
+Command::argvec		Client::nickArgs(std::string const &servertoken) const {
+	Command::argvec ret;
+
+	ret.push_back(nickname);
+	ret.push_back("2");
+	ret.push_back(username);
+	ret.push_back(hostname());
+	ret.push_back(servertoken);
+	ret.push_back(getModesFlags());
+	ret.push_back(realname);
+
+	return ret;
+}
+
+bool				Client::compare(Connection *cmp) const {
+	if (!cmp->isClient())
+		return true;
+	return compare(static_cast<Client *>(cmp));
 }
 
 bool				Client::compare(Client &cmp) const {
@@ -86,6 +108,16 @@ bool				Client::compare(Client *cmp) const {
 	return true;
 }
 
+bool				Client::validNames(void) const {
+	if (!Utils::validNickName(nickname))
+		return false;
+	if (!Utils::validUserName(username))
+		return false;
+	if (!Utils::validRealName(realname))
+		return false;
+	return true;
+}
+
 bool				Client::isAway(void) const			{ return (modes & CLIENT_AWAY); }
 bool				Client::isInvisible(void) const		{ return (modes & CLIENT_INVISIBLE); }
 bool				Client::isWallops(void) const		{ return (modes & CLIENT_WALLOPS); }
@@ -100,9 +132,35 @@ void				Client::isRestricted(bool set)		{ applyMode(CLIENT_RESTRICTED, set); }
 void				Client::isOperator(bool set)		{ applyMode(CLIENT_OPERATOR, set); }
 void				Client::isLocalop(bool set)			{ applyMode(CLIENT_LOCALOP, set); }
 
-bool				Client::checkMode(unsigned short mode) const { return (modes & mode); }
+bool				Client::checkModeFlag(char flag) const {
+	if (flag == CLIENT_FLAG_AWAY)
+		return isAway();
+	else if (flag == CLIENT_FLAG_INVISIBLE)
+		return isInvisible();
+	else if (flag == CLIENT_FLAG_WALLOPS)
+		return isWallops();
+	else if (flag == CLIENT_FLAG_RESTRICTED)
+		return isRestricted();
+	else if (flag == CLIENT_FLAG_OPERATOR)
+		return isOperator();
+	else if (flag == CLIENT_FLAG_LOCALOP)
+		return isLocalop();
+	else
+		return false;
+}
 
 bool				Client::isRegistered(void) const { return (!nickname.empty() && !username.empty() && !realname.empty()); }
+bool				Client::sharedChans(Connection *peer) const {
+	if (!peer || !peer->isClient())
+		return false;
+	if (!compare(static_cast<Client *>(peer)))
+		return true;
+	for (Client::chanlist_cit it = chans.begin(); it != chans.end(); it++) {
+		if (static_cast<Client *>(peer)->isOnChan(*it))
+			return true;
+	}
+	return false;
+}
 bool				Client::isOnChan(std::string const &chan) const {
 	return ((std::find(chans.begin(), chans.end(), chan) != chans.end() ? true : false));
 }
@@ -114,17 +172,52 @@ void				Client::applyModeFlag(char flag, bool set) {
 	std::string	const flags = CLIENT_MODE_FLAGS;
 
 	if (flags.find(flag) == std::string::npos)
-		throw (Command::InvalidCommandException(ERR_UMODEUNKNOWNFLAG));
-	if (flag == 'a' || (flag == 'o' && set))
-		throw (Command::InvalidCommandException(ERR_DISCARDCOMMAND));
-	if (flag == 'i')
+		throw (Command::InvalidCommand(ERR_UMODEUNKNOWNFLAG));
+	else if (flag == CLIENT_FLAG_AWAY || (flag == CLIENT_FLAG_OPERATOR && set))
+		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
+	else if (flag == CLIENT_FLAG_INVISIBLE)
 		isInvisible(set);
-	if (flag == 'w')
+	else if (flag == CLIENT_FLAG_WALLOPS)
 		isWallops(set);
-	if (flag == 'r')
+	else if (flag == CLIENT_FLAG_RESTRICTED)
 		isRestricted(set);
-	if (flag == 'o')
+	else if (flag == CLIENT_FLAG_OPERATOR)
 		isOperator(set);
+}
+
+void				Client::applyModeFlag(char flag) {
+	std::string	const flags = CLIENT_MODE_FLAGS;
+
+	if (flags.find(flag) == std::string::npos)
+		return;
+	else if (flag == CLIENT_FLAG_AWAY)
+		isAway(true);
+	else if (flag == CLIENT_FLAG_INVISIBLE)
+		isInvisible(true);
+	else if (flag == CLIENT_FLAG_WALLOPS)
+		isWallops(true);
+	else if (flag == CLIENT_FLAG_RESTRICTED)
+		isRestricted(true);
+	else if (flag == CLIENT_FLAG_OPERATOR)
+		isOperator(true);
+	else if (flag == CLIENT_FLAG_LOCALOP)
+		isLocalop(true);
+}
+
+std::string	const	Client::getModesFlags(void) const {
+	std::string ret("+");
+
+	if (isAway())
+		ret.append(1, CLIENT_FLAG_AWAY);
+	if (isInvisible())
+		ret.append(1, CLIENT_FLAG_INVISIBLE);
+	if (isWallops())
+		ret.append(1, CLIENT_FLAG_WALLOPS);
+	if (isRestricted())
+		ret.append(1, CLIENT_FLAG_RESTRICTED);
+	if (isOperator())
+		ret.append(1, CLIENT_FLAG_OPERATOR);
+	return ret;
 }
 
 // ########################################
@@ -154,10 +247,12 @@ std::ostream		&operator<<(std::ostream &flux, Client const &src) {
 	flux << "]n[" << src.nickname << "]";
 	flux << "u[" << src.username << "]";
 	flux << "r[" << src.realname << "]";
+	if (src.isLink())
+		flux << std::endl << "Link [" << src.link->name() << "]";
 	if (src.hasChans()) {
-		std::cout << std::endl << "\t\tchans -> ";
-		for (std::list<std::string>::const_iterator it = src.chans.begin(); it != src.chans.end(); it++)
-			std::cout << (*it) << " ";
+		flux << std::endl << "\t\tchans -> ";
+		for (Client::chanlist_cit it = src.chans.begin(); it != src.chans.end(); it++)
+			flux << (*it) << " ";
 	}
 	return flux;
 }

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ main.cpp }-------------------------------------**
 **----- Created -------------{ 2021-09-22 18:21:01 }--------------------------**
-**----- Updated -------------{ 2022-01-13 03:51:35 }--------------------------**
+**----- Updated -------------{ 2022-01-13 04:58:16 }--------------------------**
 ********************************************************************************
 */
 
@@ -93,9 +93,12 @@ int main(int argc, char const *argv[])
 		return (EXIT_FAILURE);
 	} catch (ConfigParser::FailFileStream &ex) {
 		std::cout << ex.what() << std::endl;
-		std::cout << "\'server.config\' file required with following fields in it:" << std::endl;
+		std::cout << "\'whitelist.config\' file required with following syntax:" << std::endl;
+		std::cout << "\t- \'servername\' = \'host\',\'port\',\'password\'" << std::endl;
+		std::cout << "\'server.config\' file required with following fields:" << std::endl;
 		std::cout << "\t- Mandatory fields: \'servername\' \'oppass\' \'logfile\'" << std::endl;
 		std::cout << "\t- Optional fields:  \'description\'" << std::endl;
+		std::cout << "\t- \'key\' = \'value\'" << std::endl;
 		return (EXIT_FAILURE);
 	}
 

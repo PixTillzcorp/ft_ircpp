@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2022-01-12 12:12:02 }--------------------------**
+**----- Updated -------------{ 2022-01-21 02:55:29 }--------------------------**
 ********************************************************************************
 */
 
@@ -75,7 +75,7 @@ Connection::Connection(int lsock) throw(Connection::ConxInit) : status(0), link(
 }
 
 Connection::Connection(Connection *link, unsigned short status, size_t hop) :
-	status(status), link(link), hop(hop) { return; }
+	status(status), link(link), hop(hop), stream(-1) { return; }
 
 // __________Member functions____________
 std::string const &Connection::hostname(void) const { return info.host; }
@@ -87,8 +87,14 @@ int		Connection::sock(void) const { return stream.getSock(); }
 bool	Connection::hasOutputMessage(void) const { return (stream.hasOutputMessage()); }
 bool	Connection::hasInputMessage(void) const { return (stream.hasInputMessage()); }
 void	Connection::clearMessages(void) { stream.clear(); }
-void	Connection::send(Message const &msg) { stream.queueMessage(msg); }
-void	Connection::send(Command const &cmd) { stream.queueMessage(cmd.message()); }
+void	Connection::send(Message const &msg) {
+	if (!isFinished())
+		stream.queueMessage(msg);
+}
+void	Connection::send(Command const &cmd) {
+	if (!isFinished())
+		stream.queueMessage(cmd.message());
+}
 Message Connection::getLastMessage(void) { return (stream.getLastMessage()); }
 Command Connection::getLastCommand(void) {
 	if (hasInputMessage()) {

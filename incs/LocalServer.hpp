@@ -112,12 +112,17 @@ private: // ####################################################################
 	// ___________Connection utils___________
 	void		newConx(void);
 	void		finishConx(Connection *target, bool clear);
+	void		finishConx(Server *sender, Server *target, bool clear, SquitCommand const &cmd);
+	void		finishConx(Server *sender, Client *target, bool clear, std::string const &quitmsg);
+	void		breakLinks(Server *origin);
 	Client		*findClient(std::string const &name, unsigned char type);
 	Server		*findServer(std::string const &name);
 
 	Channel		*newChan(Client *&sender, std::string const &name);
 	void		finishChan(Channel *target);
 	Channel		*findChannel(std::string const &name);
+
+	Client		*newLink(Connection *sender, NickCommand const &cmd);
 
 	void		mapName(namesmap &names, std::string const &name, Connection *conx);
 	bool		mapHasName(namesmap &names, std::string const &name);
@@ -127,8 +132,17 @@ private: // ####################################################################
 	bool		checkWhitelistHost(std::string const &servername, std::string const &host) const;
 	std::string const	whitelistPassword(std::string const &servername) const;
 
+	void		clientDisconnected(Client *client, Command::argvec const &args);
+
+	// ______________Broadcast_______________
+	void	broadcastNick(Server *sender, Client *shared);
+	void	broadcastToServers(Server *sender, Command const &cmd);
+	void	broadcastToClients(Client *sender, Command const &cmd);
+	void	shareChans(Server *target);
+	void	shareConxs(Server *target);
+
 	// ___________Connection count___________
-	unsigned int		howMany(unsigned short check) const;
+	unsigned int		howMany(char flag) const;
 	unsigned int		howMany(unsigned short check, bool direct) const;
 
 	std::string const	howManyClient(bool direct) const;
@@ -149,15 +163,30 @@ private: // ####################################################################
 	void		checkConxs(void);
 
 	// __________Execution module____________
+	// exec path
 	void		execCommand(Connection *&sender, Command cmd);
 	void		execCommandPending(Connection *&sender, Command const &cmd);
 	void		execCommandClient(Client *&sender, Command const &cmd);
+	void		execCommandServer(Server *sender, Command const &cmd);
 
+	// pending
 	void		execPass(Connection *&sender, PassCommand const &cmd);
 	void		execNick(Connection *&sender, NickCommand const &cmd);
 	void		execUser(Connection *&sender, UserCommand const &cmd);
 	void		execServer(Connection *&sender, ServerCommand const &cmd);
 
+	// server
+	void		execNick(Server *sender, NickCommand const &cmd);
+	void		execNjoin(Server *sender, NjoinCommand const &cmd);
+	void		execMode(Server *sender, ModeCommand const &cmd);
+	void		execJoin(Server *sender, JoinCommand const &cmd);
+	void		execPart(Server *sender, PartCommand const &cmd);
+	void		execPrivmsg(Server *sender, PrivmsgCommand const &cmd);
+	void		execNotice(Server *sender, NoticeCommand const &cmd);
+	void		execQuit(Server *sender, QuitCommand const &cmd);
+	void		execSquit(Server *sender, SquitCommand const &cmd);
+
+	// client
 	void		execNick(Client *sender, NickCommand const &cmd);
 	void		execUser(Client *sender, UserCommand const &cmd);
 	void		execPrivmsg(Client *sender, PrivmsgCommand const &cmd);
@@ -191,6 +220,15 @@ private: // ####################################################################
 	void		namesListAloneClient(std::list<std::string> &lst) const;
 	void		updateChans(Client *sender, Command const &cmd);
 	std::string	const codeToStr(unsigned short code) const;
+
+	// ____________Log Functions_____________
+	void		logErroneousCommand(std::string const &servername, std::string const &cmd);
+	void		logNotify(bool error, std::string const &msg);
+	void		logColored(std::string const &color, std::string const &msg);
+	void		logError(Connection *target, std::string const &msg);
+	void		logError(Connection *target, std::string const &msg, std::string const &errmsg);
+	void		logPromote(std::string const &rank, std::string const &reason, bool success);
+	void		logSuccess(std::string const &msg);
 
 	// ____________Debug Display_____________
 	void		showLocalServer(void) const;

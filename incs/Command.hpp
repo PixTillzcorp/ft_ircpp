@@ -1,10 +1,11 @@
 #ifndef FT_IRC_COMMAND_HPP
 #define FT_IRC_COMMAND_HPP
 
-#include "../incs/Message.hpp"
-#include "../incs/Debug.hpp"
+#include "Message.hpp"
+#include "Debug.hpp"
+#include "Utils.hpp"
 
-#include <list>
+#include <vector>
 
 #define MAX_MOTD_READ 80
 #define MAX_LEN_NICK 9
@@ -16,7 +17,7 @@
 #define CHAR_ALPHA_UP	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define CHAR_FORBIDDEN	"\x00\x0a\x0d\x20\x3A"
 #define CHAR_NICKNAME	"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-"
-#define CHAR_PREFIX		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-!@"
+#define CHAR_PREFIX		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-!@."
 
 #define RPL_WELCOME				001
 #define RPL_YOURHOST			002
@@ -63,6 +64,8 @@
 #define ERR_NONICKNAMEGIVEN		431
 #define ERR_ERRONEOUSNICKNAME	432
 #define ERR_NICKNAMEINUSE		433
+#define ERR_ERRONEOUSUSERNAME	434
+#define ERR_ERRONEOUSREALNAME	435
 #define ERR_USERNOTINCHANNEL	441
 #define ERR_NOTONCHANNEL		442
 #define ERR_NOTREGISTERED		451
@@ -77,10 +80,10 @@
 
 class Command : public Message {
 public: // #####################################################################
-	typedef Message					inherited;
-	typedef std::list<std::string>	arglist;
-	typedef arglist::iterator		arglist_it;
-	typedef arglist::const_iterator	arglist_cit;
+	typedef Message						inherited;
+	typedef std::vector<std::string>	argvec;
+	typedef argvec::iterator			argvec_it;
+	typedef argvec::const_iterator		argvec_cit;
 
 	// ____________Canonical Form____________
 	virtual ~Command(void);
@@ -89,21 +92,23 @@ public: // #####################################################################
 
 	// _____________Constructor______________
 	Command(Message msg);
-	Command(std::string const &prefix, std::string const &command, arglist const &args);
+	Command(std::string const &prefix, std::string const &command, argvec const &args);
 	Command(std::string const &prefix, std::string const &command, std::string const &arg);
 
 	// __________Member functions____________
-	void				addArg(std::string const arg);
+	void				addArg(std::string arg);
 	std::string const	argX(size_t x) const;
+	argvec				argList(void) const;
+	argvec				getArgs(void) const;
 	size_t				findIn(size_t x, std::string const &str) const;
 	size_t				argNbr(void) const;
 	bool				argNbr(size_t n) const;
 	Message				message(void) const;
-	virtual void		isValid(void) const throw(InvalidCommandException);
+	virtual void		isValid(void) const throw(InvalidCommand);
 	bool				compare(std::string const &cmp) const;
 
 	// ______________Exceptions______________
-	class InvalidCommandException : public std::exception { // thrown by !isValid()
+	typedef class InvalidCommandException : public std::exception { // thrown by !isValid()
 	public:
 		typedef std::exception inherited;
 
@@ -117,11 +122,11 @@ public: // #####################################################################
 
 	private:
 		InvalidCommandException();
-	};
+	} InvalidCommand;
 	
 	std::string	prefix;
 	std::string	command;
-	arglist		args;
+	argvec		args;
 
 private:
 	Command(void);

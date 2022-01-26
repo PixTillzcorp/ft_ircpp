@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LogFile.cpp }----------------------------------**
 **----- Created -------------{ 2021-12-18 17:24:21 }--------------------------**
-**----- Updated -------------{ 2022-01-11 02:43:45 }--------------------------**
+**----- Updated -------------{ 2022-01-18 20:02:50 }--------------------------**
 ********************************************************************************
 */
 
@@ -40,7 +40,7 @@ LogFile::LogFile(std::string const &filename) :
 void LogFile::append(bool timestamp, std::string const color, std::string const content) {
 	if (!!ofs && !content.empty()) {
 		if (timestamp)
-			ofs << "[" << date() << "]";
+			ofs << "[" << date() << "] ";
 		if (!color.empty())
 			ofs << color;
 		ofs << content << LOG_NORMAL << std::endl;

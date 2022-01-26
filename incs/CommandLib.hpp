@@ -20,11 +20,11 @@ public:
 	PassCommand &operator=(PassCommand const &cpy);
 
 	// _____________Constructor______________
-	PassCommand(Command const &src);
+	PassCommand(inherited const &src);
 	PassCommand(std::string const &pass);
 
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			password(void) const;
 	std::string			version(void) const;
 	std::string			implem(void) const;
@@ -47,11 +47,11 @@ public:
 	ErrorCommand &operator=(ErrorCommand const &cpy);
 
 	// _____________Constructor______________
-	ErrorCommand(Command const &src);
+	ErrorCommand(inherited const &src);
 	ErrorCommand(std::string const &msg);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			message(void) const;
 
 private:
@@ -77,13 +77,19 @@ public:
 	NickCommand &operator=(NickCommand const &cpy);
 
 	// _____________Constructor______________
-	NickCommand(Command const &src);
+	NickCommand(inherited const &src);
 	NickCommand(std::string const &prefix, std::string const &nickname);
-	NickCommand(std::string const &prefix, inherited::arglist const &args);
+	NickCommand(std::string const &prefix, inherited::argvec const &args);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			nickname(void) const;
+	std::string			hopcount(void) const;
+	std::string			username(void) const;
+	std::string			host(void) const;
+	std::string			servertoken(void) const;
+	std::string			umode(void) const;
+	std::string			realname(void) const;
 
 private:
 	NickCommand(void);
@@ -102,12 +108,12 @@ public:
 	UserCommand &operator=(UserCommand const &cpy);
 
 	// _____________Constructor______________
-	UserCommand(Command const &src);
-	UserCommand(inherited::arglist const &args);
+	UserCommand(inherited const &src);
+	UserCommand(inherited::argvec const &args);
 	UserCommand(std::string const &username, std::string const &modes, std::string const &realname);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			username(void) const;
 	std::string			modes(void) const;
 	std::string			unused(void) const;
@@ -130,12 +136,13 @@ public:
 	QuitCommand &operator=(QuitCommand const &cpy);
 
 	// _____________Constructor______________
-	QuitCommand(Command const &src);
+	QuitCommand(inherited const &src);
+	QuitCommand(std::string const &prefix);
 	QuitCommand(std::string const &prefix, std::string const &msg);
-	QuitCommand(std::string const &prefix, inherited::arglist const &args);
+	QuitCommand(std::string const &prefix, inherited::argvec const &args);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			message(void) const;
 
 private:
@@ -155,12 +162,12 @@ public:
 	PrivmsgCommand &operator=(PrivmsgCommand const &cpy);
 
 	// _____________Constructor______________
-	PrivmsgCommand(Command const &src);
-	PrivmsgCommand(std::string const &prefix, inherited::arglist const &args);
+	PrivmsgCommand(inherited const &src);
+	PrivmsgCommand(std::string const &prefix, inherited::argvec const &args);
 	PrivmsgCommand(std::string const &prefix, std::string const &target, std::string const &msg);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 	std::string			message(void) const;
 
@@ -181,12 +188,12 @@ public:
 	NoticeCommand &operator=(NoticeCommand const &cpy);
 
 	// _____________Constructor______________
-	NoticeCommand(Command const &src);
-	NoticeCommand(std::string const &prefix, inherited::arglist const &args);
+	NoticeCommand(inherited const &src);
+	NoticeCommand(std::string const &prefix, inherited::argvec const &args);
 	NoticeCommand(std::string const &prefix, std::string const &target, std::string const &msg);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 	std::string			message(void) const;
 
@@ -207,12 +214,12 @@ public:
 	PingCommand &operator=(PingCommand const &cpy);
 
 	// _____________Constructor______________
-	PingCommand(Command const &src);
+	PingCommand(inherited const &src);
 	PingCommand(std::string const &sender);
 	PingCommand(std::string const &sender, std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			sender(void) const;
 	std::string			target(void) const;
 
@@ -233,12 +240,12 @@ public:
 	PongCommand &operator=(PongCommand const &cpy);
 
 	// _____________Constructor______________
-	PongCommand(Command const &src);
+	PongCommand(inherited const &src);
 	PongCommand(std::string const &sender);
 	PongCommand(std::string const &sender, std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			sender(void) const;
 	std::string			target(void) const;
 
@@ -259,11 +266,11 @@ public:
 	MotdCommand &operator=(MotdCommand const &cpy);
 
 	// _____________Constructor______________
-	MotdCommand(Command const &src);
+	MotdCommand(inherited const &src);
 	MotdCommand(std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 
 private:
@@ -283,11 +290,11 @@ public:
 	LusersCommand &operator=(LusersCommand const &cpy);
 
 	// _____________Constructor______________
-	LusersCommand(Command const &src);
+	LusersCommand(inherited const &src);
 	LusersCommand(std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 
 private:
@@ -307,11 +314,11 @@ public:
 	WhoisCommand &operator=(WhoisCommand const &cpy);
 
 	// _____________Constructor______________
-	WhoisCommand(Command const &src);
+	WhoisCommand(inherited const &src);
 	WhoisCommand(std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 
 private:
@@ -331,11 +338,11 @@ public:
 	JoinCommand &operator=(JoinCommand const &cpy);
 
 	// _____________Constructor______________
-	JoinCommand(Command const &src);
+	JoinCommand(inherited const &src);
 	JoinCommand(std::string const &prefix, std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 
 private:
@@ -355,12 +362,12 @@ public:
 	PartCommand &operator=(PartCommand const &cpy);
 
 	// _____________Constructor______________
-	PartCommand(Command const &src);
-	PartCommand(std::string const &prefix, inherited::arglist const &args);
+	PartCommand(inherited const &src);
+	PartCommand(std::string const &prefix, inherited::argvec const &args);
 	PartCommand(std::string const &prefix, std::string const &target, std::string const &msg);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 	std::string			message(void) const;
 
@@ -381,12 +388,12 @@ public:
 	TopicCommand &operator=(TopicCommand const &cpy);
 
 	// _____________Constructor______________
-	TopicCommand(Command const &src);
-	TopicCommand(std::string const &prefix, inherited::arglist const &args);
+	TopicCommand(inherited const &src);
+	TopicCommand(std::string const &prefix, inherited::argvec const &args);
 	TopicCommand(std::string const &prefix, std::string const &target, std::string const &topic);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 	std::string			topic(void) const;
 
@@ -407,12 +414,12 @@ public:
 	OperCommand &operator=(OperCommand const &cpy);
 
 	// _____________Constructor______________
-	OperCommand(Command const &src);
-	OperCommand(std::string const &prefix, inherited::arglist const &args);
+	OperCommand(inherited const &src);
+	OperCommand(std::string const &prefix, inherited::argvec const &args);
 	OperCommand(std::string const &prefix, std::string const &name, std::string const &password);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			name(void) const;
 	std::string			password(void) const;
 
@@ -433,11 +440,11 @@ public:
 	OppassCommand &operator=(OppassCommand const &cpy);
 
 	// _____________Constructor______________
-	OppassCommand(Command const &src);
+	OppassCommand(inherited const &src);
 	OppassCommand(std::string const &prefix, std::string const &password);
 
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			password(void) const;
 
 private:
@@ -457,14 +464,14 @@ public:
 	ModeCommand &operator=(ModeCommand const &cpy);
 
 	// _____________Constructor______________
-	ModeCommand(Command const &src);
-	ModeCommand(std::string const &prefix, inherited::arglist const &args);
+	ModeCommand(inherited const &src);
+	ModeCommand(std::string const &prefix, inherited::argvec const &args);
 	ModeCommand(std::string const &prefix, std::string const &chan);
 	ModeCommand(std::string const &prefix, std::string const &target, std::string const &mode);
 	ModeCommand(std::string const &prefix, std::string const &chan, std::string const &mode, std::string const &nick);
 
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			field1(void) const;
 	std::string			field2(void) const;
 	std::string			field3(void) const;
@@ -486,11 +493,11 @@ public:
 	AwayCommand &operator=(AwayCommand const &cpy);
 
 	// _____________Constructor______________
-	AwayCommand(Command const &src);
+	AwayCommand(inherited const &src);
 	AwayCommand(std::string const &prefix, std::string const &message);
 
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			message(void) const;
 
 private:
@@ -510,11 +517,11 @@ public:
 	NamesCommand &operator=(NamesCommand const &cpy);
 
 	// _____________Constructor______________
-	NamesCommand(Command const &src);
+	NamesCommand(inherited const &src);
 	NamesCommand(std::string const &prefix, std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 
 private:
@@ -534,11 +541,11 @@ public:
 	ListCommand &operator=(ListCommand const &cpy);
 
 	// _____________Constructor______________
-	ListCommand(Command const &src);
+	ListCommand(inherited const &src);
 	ListCommand(std::string const &prefix, std::string const &target);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			target(void) const;
 
 private:
@@ -558,11 +565,11 @@ public:
 	WhoCommand &operator=(WhoCommand const &cpy);
 
 	// _____________Constructor______________
-	WhoCommand(Command const &src);
+	WhoCommand(inherited const &src);
 	WhoCommand(std::string const &prefix, std::string const &mask);
 	
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(Command::InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			mask(void) const;
 
 private:
@@ -588,13 +595,13 @@ public:
 	ServerCommand &operator=(ServerCommand const &cpy);
 
 	// _____________Constructor______________
-	ServerCommand(std::string const prefix, inherited::arglist const &args);
-	ServerCommand(inherited::arglist const &args);
+	ServerCommand(std::string const prefix, inherited::argvec const &args);
+	ServerCommand(inherited::argvec const &args);
 	// ServerCommand(std::string const prefix, ServerCommand const &cmd);
-	ServerCommand(Command const &src);
+	ServerCommand(inherited const &src);
 
 	// __________Member functions____________
-	virtual void		isValid(void) const throw(InvalidCommandException);
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
 	std::string			servername(void) const;
 	std::string			hopcount(void) const;
 	std::string			token(void) const;
@@ -606,54 +613,53 @@ private:
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// class NickServerCommand : public Command {
-// public:
-// 	// ____________Canonical Form____________
-// 	virtual ~NickServerCommand(void);
-// 	// NickServerCommand(void);
-// 	NickServerCommand(NickServerCommand const &cpy);
-// 	NickServerCommand &operator=(NickServerCommand const &cpy);
+class NjoinCommand : public Command {
+public:
+	typedef Command inherited;
 
-// 	// _____________Constructor______________
-// 	NickServerCommand(std::string const prefix, std::string const &nick);
-// 	NickServerCommand(std::list<std::string> const &args);
-// 	NickServerCommand(Command const &src);
+	// ____________Canonical Form____________
+	virtual ~NjoinCommand(void);
+	// NjoinCommand(void);
+	NjoinCommand(NjoinCommand const &cpy);
+	NjoinCommand &operator=(NjoinCommand const &cpy);
 
-// 	virtual bool		isValid(void) const;
+	// _____________Constructor______________
+	NjoinCommand(inherited const &src);
+	NjoinCommand(std::string const &prefix, std::string const &chan, std::string const &members);
+	
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
+	std::string			chan(void) const;
+	std::string			members(void) const;
 
-// 	std::string nickname;
-// 	size_t		hopcount;
-// 	std::string username;
-// 	std::string host;
-// 	std::string token;
-// 	int			usermode;
-// 	std::string realname;
+private:
+	NjoinCommand(void);
+};
 
-// private:
-// 	NickServerCommand(void);
-// };
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class SquitCommand : public Command {
+public:
+	typedef Command inherited;
 
-// class SquitCommand : public Command {
-// public:
-// 	// ____________Canonical Form____________
-// 	virtual ~SquitCommand(void);
-// 	// SquitCommand(void);
-// 	SquitCommand(SquitCommand const &cpy);
-// 	SquitCommand &operator=(SquitCommand const &cpy);
+	// ____________Canonical Form____________
+	virtual ~SquitCommand(void);
+	// SquitCommand(void);
+	SquitCommand(SquitCommand const &cpy);
+	SquitCommand &operator=(SquitCommand const &cpy);
 
-// 	// _____________Constructor______________
-// 	SquitCommand(std::string const prefix, std::string const &target);
-// 	SquitCommand(Command const &src);
+	// _____________Constructor______________
+	SquitCommand(inherited const &src);
+	SquitCommand(std::string const &prefix, inherited::argvec const &args);
+	SquitCommand(std::string const &prefix, std::string const &server, std::string const &comment);
+	
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
+	std::string			server(void) const;
+	std::string			comment(void) const;
 
-// 	virtual bool		isValid(void) const;
-
-// 	std::string target;
-
-// private:
-// 	SquitCommand(void);
-
-// };
+private:
+	SquitCommand(void);
+};
 
 #endif //FT_IRC_COMMAND_LIB_HPP

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2021-12-15 19:54:29 }--------------------------**
+**----- Updated -------------{ 2022-01-17 12:04:37 }--------------------------**
 ********************************************************************************
 */
 
@@ -59,19 +59,19 @@ void	SelectModule::call(std::list<Connection *> &conxs) {
 	this->_wfds.zeroFd();
 	for (it = conxs.begin(); it != conxs.end(); it++)
 	{
-		if ((*it)->isFinished() || (*it)->isLink())
-			this->_rfds.removeFd((*it)->sock());
+		if ((*it)->isFinished()) {
+			if (!(*it)->isLink())
+				this->_rfds.removeFd((*it)->sock());
+			if (!(*it)->hasOutputMessage()) {
+				this->_mfds.removeFd((*it)->sock());
+				try { (*it)->end(); }
+				catch (Connection::FailClose &ex) { std::cout << ex.what() << std::endl; }
+				conxs.erase(it--);
+				continue;
+			}
+		}
 		if ((*it)->hasOutputMessage())
 			this->_wfds.addFd((*it)->sock());
-		else if ((*it)->isFinished()) { // conx we need to end
-			this->_mfds.removeFd((*it)->sock());
-			try {
-				(*it)->end(); // close then delete itself
-			} catch (Connection::FailClose &ex) {
-				std::cout << ex.what() << std::endl;
-			}
-			conxs.erase(it--);
-		}
 	}
 	if (select(this->_ufd, this->_rfds.getPtr(), this->_wfds.getPtr(), nullptr, nullptr) == -1)
 		throw(SelectModule::SelectException());

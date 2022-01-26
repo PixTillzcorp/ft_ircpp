@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Channel.cpp }----------------------------------**
 **----- Created -------------{ 2021-10-11 15:03:32 }--------------------------**
-**----- Updated -------------{ 2022-01-10 07:30:32 }--------------------------**
+**----- Updated -------------{ 2022-01-26 02:44:14 }--------------------------**
 ********************************************************************************
 */
 
@@ -49,6 +49,11 @@ Channel::Channel(Client *creator, std::string const &name) :_creator(creator),
 	return;
 }
 
+Channel::Channel(std::string const &name, Client *creator) :
+_creator(creator), _name(name), _modes(CHAN_DEFAULT_MODES) {
+	creator->addChanToList(getName());
+}
+
 // __________Member functions____________
 unsigned short	Channel::join(Client *joiner) {
 	// if (isBanned(joiner->name())) {
@@ -69,6 +74,13 @@ unsigned short	Channel::join(Client *joiner) {
 	return 0;
 }
 
+void			Channel::njoin(Client *joiner) {
+	if (!isOnChan(joiner)) {
+		_members.push_back(joiner);
+		joiner->addChanToList(_name);
+	}
+}
+
 void			Channel::leave(Client *leaver) {
 	if (!leaver)
 		return;
@@ -83,10 +95,10 @@ bool			Channel::empty(void) const { return (!_creator); }
 bool			Channel::hasTopic(void) { return !(_topic.empty()); }
 void			Channel::namesList(std::list<std::string> &lst) const {
 	lst.clear();
-	lst.push_back("@" + _creator->nickname);
-	for (std::list<Client *>::const_iterator it = _operators.begin(); it != _operators.end(); it++)
+	lst.push_back("@@" + _creator->nickname);
+	for (Channel::clientlist_cit it = _operators.begin(); it != _operators.end(); it++)
 		lst.push_back("@" + (*it)->nickname);
-	for (std::list<Client *>::const_iterator it = _members.begin(); it != _members.end(); it++) {
+	for (Channel::clientlist_cit it = _members.begin(); it != _members.end(); it++) {
 		if ((*it)->isOperator())
 			lst.push_back("@" + (*it)->nickname);
 		else if (isModerated() && canTalk((*it)))
@@ -96,7 +108,7 @@ void			Channel::namesList(std::list<std::string> &lst) const {
 	}
 }
 
-void			Channel::clientsList(std::list<Client *> &lst) const {
+void			Channel::clientsList(Channel::clientlist &lst) const {
 	lst.clear();
 	lst.push_back(_creator);
 	lst.insert(lst.end(), _operators.begin(), _operators.end());
@@ -171,9 +183,7 @@ bool			Channel::canTalk(Client *user) const {
 }
 
 bool			Channel::checkVoice(std::string const &voice) const {
-	std::list<std::string>::const_iterator it;
-
-	if ((it = std::find(_voices.begin(), _voices.end(), voice)) != _voices.end())
+	if (std::find(_voices.begin(), _voices.end(), voice) != _voices.end())
 		return true;
 	return false;
 }
@@ -207,7 +217,7 @@ void Channel::applyLocalChannel(bool set)	{ this->applyMode(CHAN_LOCALCHANNEL, s
 void			Channel::applyModeFlag(Client *sender, char flag, bool set) {
 	std::string	const flags = CHAN_MODE_FLAGS;
 
-	if (!isOperator(sender))
+	if (!isCreator(sender) && !isOperator(sender))
 		throw (Command::InvalidCommandException(ERR_CHANOPRIVSNEEDED));
 	if (flags.find(flag) == std::string::npos)
 		throw (Command::InvalidCommandException(ERR_UNKNOWNMODE));
@@ -234,6 +244,36 @@ void			Channel::applyModeFlag(Client *sender, char flag, bool set) {
 	if (flag == 'l')
 		applyUserLimit(set);
 	broadcast(nullptr, ModeCommand(sender->fullId(), _name, getModeString(flag, set)));
+}
+
+bool			Channel::applyModeFlag(char flag, bool set) {
+	std::string	const flags = CHAN_MODE_FLAGS;
+
+	if (flags.find(flag) == std::string::npos)
+		return false;
+	if (flag == 'a')
+		applyAnonymous(set);
+	if (flag == 'i')
+		applyInviteonly(set);
+	if (flag == 'm')
+		applyModerated(set);
+	if (flag == 'n')
+		applyNoOutMessage(set);
+	if (flag == 'q')
+		applyQuiet(set);
+	if (flag == 'p')
+		applyPrivate(set);
+	if (flag == 's')
+		applySecret(set);
+	if (flag == 'r')
+		applyServerReop(set);
+	if (flag == 't')
+		applyTopic(set);
+	if (flag == 'k')
+		applyKey(set);
+	if (flag == 'l')
+		applyUserLimit(set);
+	return true;
 }
 
 void			Channel::applyUserModeFlag(Client *sender, Client *target, char flag, bool set) {
@@ -285,11 +325,11 @@ unsigned int	Channel::size(void) const { return (1 + _operators.size() + _member
 void				Channel::broadcast(Client *sender, Command const &cmd) {
 	if (!sender || sender->compare(_creator))
 		_creator->send(cmd);
-	for (std::list<Client *>::iterator it = _operators.begin(); it != _operators.end(); it++) {
+	for (Channel::clientlist_it it = _operators.begin(); it != _operators.end(); it++) {
 		if (!sender || sender->compare(*it))
 			(*it)->send(cmd);
 	}
-	for (std::list<Client *>::iterator it = _members.begin(); it != _members.end(); it++) {
+	for (Channel::clientlist_it it = _members.begin(); it != _members.end(); it++) {
 		if (!sender || sender->compare(*it))
 			(*it)->send(cmd);
 	}
@@ -337,8 +377,8 @@ void				Channel::demote(Client *user) {
 	_members.push_back(user);
 }
 
-void				Channel::removeMember(Client *leaver, std::list<Client *> &type) {
-	std::list<Client *>::iterator it;
+void				Channel::removeMember(Client *leaver, Channel::clientlist &type) {
+	Channel::clientlist_it it;
 
 	if ((it = std::find(type.begin(), type.end(), leaver)) != type.end())
 		type.erase(it);
@@ -380,7 +420,7 @@ std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
 	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);
 	if (!names.empty()) {
 		for (std::list<std::string>::const_iterator it = names.begin(); it != names.end(); it++)
-			flux << "\t~~~> \t" << (*it) << (src.checkVoice(*it) ? " [v]" : "") << std::endl;
+			flux << "~~~> \t" << (*it) << (src.checkVoice(*it) ? " [v]" : "") << std::endl;
 	}
 	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);
 	return flux;

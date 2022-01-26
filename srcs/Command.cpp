@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Command.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-21 12:59:56 }--------------------------**
-**----- Updated -------------{ 2022-01-09 16:17:28 }--------------------------**
+**----- Updated -------------{ 2022-01-21 03:45:46 }--------------------------**
 ********************************************************************************
 */
 
@@ -76,11 +76,11 @@ Command::Command(Message msg) : inherited(msg) {
 	}
 }
 
-Command::Command(std::string const &prefix, std::string const &command, std::list<std::string> const &args) :	Message(""),
-																												prefix(prefix),
-																												command(command),
-																												args(args) {
-	arglist::const_iterator it = args.begin();
+Command::Command(std::string const &prefix, std::string const &command, Command::argvec const &args) :	inherited(""),
+																										prefix(prefix),
+																										command(command),
+																										args(args) {
+	argvec::const_iterator it = args.begin();
 	std::string content;
 	bool lst = false;
 
@@ -113,58 +113,60 @@ Command::Command(std::string const &prefix, std::string const &command, std::lis
 }
 
 Command::Command(std::string const &prefix, std::string const &command, std::string const &arg) {
-	arglist args(1, arg);
+	argvec args(1, arg);
 
 	if (arg.empty())
-		args.pop_front();
+		args.pop_back();
 	*this = Command(prefix, command, args);
 }
 
 // __________Member functions____________
-void	Command::addArg(std::string const arg) {
-	if (!arg.empty()) {
-		args.push_back(arg);
-		if (arg.find(' ') == std::string::npos || arg[0] == ':')
+void	Command::addArg(std::string arg) {
+	Utils::clearSpaces(arg, false);
+	if (!arg.empty() && arg.compare(":")) {
+		if (!args.empty() && (args.back().find(' ') != std::string::npos ||
+		!args.back().rfind(":", 0)) && arg[0] != ':')
+			content.append(" :" + arg);
+		else if (arg.find(' ') == std::string::npos || arg[0] == ':')
 			content.append(" " + arg);
 		else
 			content.append(" :" + arg);
+		args.push_back(arg);
 	}
 }
 std::string const Command::argX(size_t x) const {
-	arglist::const_iterator it = args.begin();
-
-	if (args.empty() || args.size() < x)
+	if (args.empty() || x >= args.size())
 		return std::string();
-	std::advance(it, x);
-	return *it;
+	return args[x];
 }
+Command::argvec	Command::getArgs(void) const { return args; }
 size_t	Command::findIn(size_t x, std::string const &str) const { return (argX(x).find(str)); }
 size_t	Command::argNbr(void) const { return args.size(); }
 bool	Command::argNbr(size_t n) const { return args.size() == n; }
 bool	Command::compare(std::string const &cmp) const { return !command.compare(cmp); }
 Message Command::message(void) const { return inherited(static_cast<inherited const &>(*this)); }
 
-void Command::isValid(void) const throw(Command::InvalidCommandException) {
+void Command::isValid(void) const throw(Command::InvalidCommand) {
 	if (command.empty() || argNbr() > 15 || content.size() > 510)
-		throw (Command::InvalidCommandException(ERR_DISCARDCOMMAND));
+		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
 	else if (!prefix.empty() && prefix.find_first_not_of(CHAR_PREFIX) != std::string::npos)
-		throw (Command::InvalidCommandException(ERR_DISCARDCOMMAND));
+		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
 }
 
 // ########################################
 // 				 EXECEPTIONS
 // ########################################
 
-Command::InvalidCommandException::~InvalidCommandException(void) throw() { return; }
-Command::InvalidCommandException::InvalidCommandException(unsigned short code) : code(code) { return; }
-Command::InvalidCommandException::InvalidCommandException(InvalidCommandException const &cpy) :
+Command::InvalidCommand::~InvalidCommandException(void) throw() { return; }
+Command::InvalidCommand::InvalidCommandException(unsigned short code) : code(code) { return; }
+Command::InvalidCommand::InvalidCommandException(InvalidCommand const &cpy) :
 	inherited(static_cast<inherited const &>(cpy)), code(cpy.code) { return; }
-Command::InvalidCommandException &Command::InvalidCommandException::operator=(InvalidCommandException const &cpy) {
+Command::InvalidCommand &Command::InvalidCommand::operator=(InvalidCommand const &cpy) {
 	static_cast<inherited &>(*this) = static_cast<inherited const &>(cpy);
 	code = cpy.code;
 	return *this;
 }
-const char *Command::InvalidCommandException::what() const throw() {
+const char *Command::InvalidCommand::what() const throw() {
 	return ("Invalid Command.");
 }
 

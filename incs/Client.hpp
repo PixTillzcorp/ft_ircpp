@@ -1,22 +1,33 @@
 #ifndef FT_IRCPP_CLIENT_HPP
 #define FT_IRCPP_CLIENT_HPP
 
-#include "../incs/Connection.hpp"
+#include "Connection.hpp"
+#include "Utils.hpp"
 
 #define CLIENT_MODE_FLAGS "aiwroO"
 
 #define CLIENT_NOMODE		0
 
-#define CLIENT_AWAY			1		// a
-#define CLIENT_INVISIBLE	2		// i
-#define CLIENT_WALLOPS		4		// w
-#define CLIENT_RESTRICTED	8		// r
-#define CLIENT_OPERATOR		16		// o
-#define CLIENT_LOCALOP		32		// O
+#define CLIENT_AWAY				1
+#define CLIENT_INVISIBLE		2
+#define CLIENT_WALLOPS			4
+#define CLIENT_RESTRICTED		8
+#define CLIENT_OPERATOR			16
+#define CLIENT_LOCALOP			32
+
+#define CLIENT_FLAG_AWAY		'a'
+#define CLIENT_FLAG_INVISIBLE	'i'
+#define CLIENT_FLAG_WALLOPS		'w'
+#define CLIENT_FLAG_RESTRICTED	'r'
+#define CLIENT_FLAG_OPERATOR	'o'
+#define CLIENT_FLAG_LOCALOP		'O'
 
 class Client : public Connection {
 public: // #####################################################################
-	typedef Connection inherited;
+	typedef Connection					inherited;
+	typedef std::list<std::string>		chanlist;
+	typedef chanlist::iterator			chanlist_it;
+	typedef chanlist::const_iterator	chanlist_cit;
 
 	std::string				nickname;
 	std::string				username;
@@ -32,20 +43,29 @@ public: // #####################################################################
 	// _____________Constructor______________
 	Client(Connection *&src, NickCommand const &cmd);
 	Client(Connection *&src, UserCommand const &cmd);
+	Client(Connection *link, size_t hop);
 
 	// __________Member functions____________
 	virtual std::string const &name(void) const;
 	std::string const	fullId(void) const;
+	Command::argvec		nickArgs(std::string const &servertoken) const;
+	bool				compare(Connection *cmp) const;
 	bool				compare(Client &cmp) const;
 	bool				compare(Client *cmp) const;
 
+	bool				validNames(void) const;
+
 	bool				isRegistered(void) const;
+	bool				sharedChans(Connection *peer) const;
 	bool				isOnChan(std::string const &chan) const;
 	bool				hasChans(void) const;
 
 	void				addChanToList(std::string const &chan);
 	void				removeChanFromList(std::string const &chan);
 	void				applyModeFlag(char flag, bool set);
+	void				applyModeFlag(char flag);
+	bool				checkModeFlag(char flag) const;
+	std::string	const	getModesFlags(void) const;
 
 	bool				isAway(void) const;
 	bool				isInvisible(void) const;
@@ -60,8 +80,6 @@ public: // #####################################################################
 	void				isRestricted(bool set);
 	void				isOperator(bool set);
 	void				isLocalop(bool set);
-
-	bool				checkMode(unsigned short mode) const;
 
 private: // ####################################################################
 	Client();

@@ -105,6 +105,10 @@ OBJDIR = obj
 
 TESTDIR = tests_exec
 
+TESTSERVERDIR = test_server
+
+TESTSERVERDIR2 = test_server2
+
 INCDIR = incs
 
 HEADERS =	Connection.hpp Utils.hpp FdSet.hpp Message.hpp ServerInfo.hpp	\
@@ -143,7 +147,7 @@ SRCO_TEST_LOCALSERVER = 	Message.o FdSet.o AddrInfo.o SockInfo.o			\
 							CommandLib.o SelectModule.o LocalServer.o		\
 							test_localserver.o
 
-SRCO_TEST_COMMAND =	Message.o Command.o test_command.o
+SRCO_TEST_COMMAND =	Message.o Command.o test_command.o Utils.o
 
 SRCO_SVR = 	Message.o Utils.o FdSet.o AddrInfo.o SockInfo.o SockStream.o	\
 			Connection.o Client.o Server.o Command.o CommandLib.o			\
@@ -239,7 +243,7 @@ $(NAME): $(addprefix $(OBJDIR)/,$(SRCO_SVR))
 #																			   #
 # **************************************************************************** #
 
-test_%:
+test_%: 
 	@ $(MAKE) $(addprefix $(OBJDIR)/, $(SRCO_TEST_$(shell echo '$*' | tr '[:lower:]' '[:upper:]')))
 	@ $(eval DONE = $(shell echo $(SRC_NBR)))
 	@ $(CXX) $(CXXFLAGS) -o $@ $(addprefix $(OBJDIR)/, $(SRCO_TEST_$(shell echo '$*' | tr '[:lower:]' '[:upper:]')))
@@ -249,6 +253,26 @@ test_%:
 	@ mkdir -p $(TESTDIR)
 	@ mv ./$(notdir $@) ./$(TESTDIR)/
 
+testenv: $(NAME)
+	@ mkdir -p ./$(TESTSERVERDIR)
+	@ cp ./$(NAME) ./$(TESTSERVERDIR)
+	@ echo "main.pixtillz.serv.fr = localhost,6667,etoile" > ./$(TESTSERVERDIR)/whitelist.config
+	@ echo "test2.pixtillz.serv.fr = localhost,6668,jax" > ./$(TESTSERVERDIR)/whitelist.config
+	@ echo "servername = test.pixtillz.serv.fr\noppass = monkey\nlogfile = server.log\ndescription = Test server" > ./$(TESTSERVERDIR)/server.config
+	@ echo "test environment successfuly created."
+
+testenv2: testenv
+	@ mkdir -p ./$(TESTSERVERDIR2)
+	@ cp ./$(NAME) ./$(TESTSERVERDIR2)
+	@ echo "main.pixtillz.serv.fr = localhost,6667,etoile" > ./$(TESTSERVERDIR2)/whitelist.config
+	@ echo "test2.pixtillz.serv.fr = localhost,6668,jax" > ./$(TESTSERVERDIR2)/whitelist.config
+	@ echo "servername = test.pixtillz.serv.fr\noppass = monkey\nlogfile = server.log\ndescription = Test server" > ./$(TESTSERVERDIR)/server.config
+	@ echo "test environment successfuly created."
+
+deletetestenv:
+	@ rm -rf ./$(TESTSERVERDIR) ./$(TESTSERVERDIR2)
+
+retestenv: deletetestenv testenv2
 
 # **************************************************************************** #
 #																			   #

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Utils.cpp }------------------------------------**
 **----- Created -------------{ 2021-12-14 19:24:06 }--------------------------**
-**----- Updated -------------{ 2022-01-11 06:57:35 }--------------------------**
+**----- Updated -------------{ 2022-01-14 06:33:47 }--------------------------**
 ********************************************************************************
 */
 
@@ -34,7 +34,7 @@ std::string	Utils::nbrToStr(unsigned int nbr) throw(Utils::FailStream) {
 
 unsigned int Utils::strToNbr(std::string const &str) throw(Utils::FailStream) {
 	std::stringstream ret;
-	int nbr;
+	int nbr = 0;
 
 	if (str.empty())
 		return 0;
@@ -66,6 +66,8 @@ std::string	Utils::getToken(std::string &src, std::string const del) {
 	}
 	return token;
 }
+
+bool	Utils::checkNbr(std::string const &nbr) { return (nbr.find_first_not_of("0123456789") == std::string::npos); }
 
 bool	Utils::validChanName(std::string const &name) {
 	if (name.empty() || name.length() < 2 || name.length() > 50)
@@ -109,6 +111,35 @@ bool	Utils::validRealName(std::string const &name) {
 			return false;
 	}
 	return true;
+}
+
+bool	Utils::validServName(std::string const &name) {
+	if (name.empty() || name.length() < 3 || name.length() > UTILS_MAX_LEN_SERV)
+		return false;
+	if (name[0] == '-')
+		return false;
+	if (name.find(".-") != std::string::npos)
+		return false;
+	for (std::string::const_iterator it = name.begin(); it != name.end(); it++) {
+		if (!isAlpha(*it) && !isDigit(*it) && *it != '-' && *it != '.')
+			return false;
+	}
+	return true;
+}
+
+void	Utils::clearSpaces(std::string &str, bool all) {
+	if (str.empty())
+		return;
+	while(!str.empty() && str[0] == ' ')
+		str.erase(0, 1);
+	for (int i = 0; i < str.length(); i++) {
+		if (str[i] == ' ') {
+			while (i + 1 < str.length() && str[i + 1] == ' ')
+				str.erase(i, 1);
+			if (i + 1 == str.length() || all)
+				str.erase(i, 1);
+		}
+	}
 }
 
 // ########################################

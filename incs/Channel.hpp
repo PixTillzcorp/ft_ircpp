@@ -26,6 +26,13 @@
 
 class Channel {
 public: // #####################################################################
+	typedef std::list<Client *>			clientlist;
+	typedef clientlist::iterator		clientlist_it;
+	typedef clientlist::const_iterator	clientlist_cit;
+	typedef std::list<std::string>		namelist;
+	typedef namelist::iterator			namelist_it;
+	typedef namelist::const_iterator	namelist_cit;
+
 	// ____________Canonical Form____________
 	virtual ~Channel(void);
 	Channel(void);
@@ -33,16 +40,18 @@ public: // #####################################################################
 	Channel &operator=(Channel const &src);
 
 	// _____________Constructor______________
-	Channel(Client *creator, std::string const &name);
+	Channel(Client *creator, std::string const &name); // JOIN
+	Channel(std::string const &name, Client *creator); // NJOIN
 
 	// __________Member functions____________
 	unsigned short			join(Client *joiner);
+	void					njoin(Client *joiner);
 	void					leave(Client *leaver);
 	bool					empty(void) const;
 	bool					hasTopic(void);
 
 	void					namesList(std::list<std::string> &lst) const;
-	void					clientsList(std::list<Client *> &lst) const;
+	void					clientsList(clientlist &lst) const;
 
 	void					send(Client *sender, PrivmsgCommand const &cmd);
 	void					updateClients(Client *sender, Command const &cmd);
@@ -58,6 +67,7 @@ public: // #####################################################################
 
 	std::string				getModesFlags(void);
 	void					applyModeFlag(Client *sender, char flag, bool set);
+	bool					applyModeFlag(char flag, bool set);
 	void					applyUserModeFlag(Client *sender, Client *target, char flag, bool set);
 
 	bool isAnonymous(void) const;
@@ -101,12 +111,12 @@ public: // #####################################################################
 	void							setCreator(Client *src) { this->_creator = src; }
 
 	// _members
-	std::list<Client *>	const		&getMembers(void) const { return this->_operators; }
-	void							setMembers(std::list<Client *> const &src) { this->_operators = src; }
+	clientlist	const				&getMembers(void) const { return this->_operators; }
+	void							setMembers(clientlist const &src) { this->_operators = src; }
 
 	// _operators
-	std::list<Client *>	const		&getOperators(void) const { return this->_members; }
-	void							setOperators(std::list<Client *> const &src) { this->_members = src; }
+	clientlist	const				&getOperators(void) const { return this->_members; }
+	void							setOperators(clientlist const &src) { this->_members = src; }
 
 	// _voices
 	std::list<std::string>	const	&getVoices(void) const { return this->_voices; }
@@ -130,8 +140,8 @@ protected: // ##################################################################
 	std::string								_name;
 	std::string								_topic;
 	Client									*_creator;
-	std::list<Client *>						_operators;
-	std::list<Client *>						_members;
+	clientlist								_operators;
+	clientlist								_members;
 	std::list<std::string>					_voices;
 	std::list<std::string>					_invites;
 	std::list<std::string>					_bans;

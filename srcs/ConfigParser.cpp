@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ ConfigParser.cpp }-----------------------------**
 **----- Created -------------{ 2021-12-14 01:24:08 }--------------------------**
-**----- Updated -------------{ 2022-01-13 04:01:10 }--------------------------**
+**----- Updated -------------{ 2022-01-13 05:35:24 }--------------------------**
 ********************************************************************************
 */
 
@@ -75,7 +75,7 @@ bool	ConfigParser::getNextField(std::ifstream &file) throw(ConfigParser::FailFil
 	return getNextField(file);
 }
 
-bool	ConfigParser::isNotGraph(int c) { return !isgraph(c); }
+bool	ConfigParser::isNotGraph(int c) { return (c != ' ' && !isgraph(c)); }
 
 void	ConfigParser::getStats(std::string const &filename, stats *dest) throw(ConfigParser::FailFileStream) {
 	if (lstat(filename.c_str(), dest) == -1)
@@ -93,13 +93,17 @@ bool	ConfigParser::isModified(std::string const &filename) throw(ConfigParser::F
 
 void	ConfigParser::makeKeyValue(std::string line) {
 	std::string key;
+	std::string value;
 	size_t	equal;
 
 	if (!line.empty()) {
 		line.erase(std::remove_if(line.begin(), line.end(), isNotGraph), line.end());
 		if ((equal = line.find('=')) != std::string::npos && equal != line.size()) {
 			if (!(key = line.substr(0, equal)).empty())
-				fields[key] = line.substr(equal + 1);
+				value = line.substr(equal + 1);
+				Utils::clearSpaces(key, true);
+				Utils::clearSpaces(value, false);
+				fields[key] = value;
 		}
 	}
 }

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Server.cpp }-----------------------------------**
 **----- Created -------------{ 2021-05-26 16:47:47 }--------------------------**
-**----- Updated -------------{ 2022-01-13 02:21:42 }--------------------------**
+**----- Updated -------------{ 2022-01-17 09:55:42 }--------------------------**
 ********************************************************************************
 */
 
@@ -57,23 +57,23 @@ Server::Server(Server *link, ServerCommand const &cmd) :
 }
 
 Server::Server(std::string const &host, std::string const &port, u_int16_t family) :
-	inherited(host, port, family), version(SERVER_VERSION), implem(SERVER_IMPLEM), token("0") {
+	inherited(host, port, family), version(SERVER_VERSION), implem(SERVER_IMPLEM), token("1") {
 	isServer(true);
 	return;
 }
 
 // __________Member functions____________
 std::string const		&Server::name(void) const { return servername; }
-Command::arglist const	Server::getArgListConnect(void) const {
-	Command::arglist ret;
+Command::argvec const	Server::getArgListConnect(void) const {
+	Command::argvec ret;
 
 	ret.push_back(servername);
 	ret.push_back(desc);
 	return ret;
 }
 
-Command::arglist const	Server::getArgListAccept(void) const {
-	Command::arglist ret;
+Command::argvec const	Server::getArgListAccept(void) const {
+	Command::argvec ret;
 
 	ret.push_back(servername);
 	ret.push_back("1");
@@ -82,9 +82,22 @@ Command::arglist const	Server::getArgListAccept(void) const {
 	return ret;
 }
 
+bool	Server::compare(Connection *conx) const {
+	Server	*tmp;
+
+	if (!conx || !conx->isServer())
+		return true;
+	tmp = static_cast<Server *>(conx);
+	if (!tmp->servername.compare(servername))
+		return false;
+	return true;
+}
+
+bool	Server::isToken(std::string const &cmp) const { return (!token.compare(cmp)); }
+
 std::ostream &operator<<(std::ostream &flux, Server const &src) {
 	flux << static_cast<Connection const &>(src);
-	flux << "name[" << src.servername << "]v[" << src.implem << "|" << src.version << "]";
+	flux << "name[" << src.servername << "]v[" << src.implem << "|" << src.version << "]tok[" << src.token << "]";
 	if (!src.desc.empty())
 		flux << std::endl << "\t\tdesc ->" << src.desc;
 	return flux;

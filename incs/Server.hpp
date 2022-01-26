@@ -29,8 +29,11 @@ public:
 
 	// __________Member functions____________
 	virtual std::string const &name(void) const;
-	Command::arglist const getArgListConnect(void) const;
-	Command::arglist const getArgListAccept(void) const;
+	Command::argvec const getArgListConnect(void) const;
+	Command::argvec const getArgListAccept(void) const;
+
+	bool	compare(Connection *conx) const;
+	bool	isToken(std::string const &cmp) const;
 
 private:
 	Server(void);

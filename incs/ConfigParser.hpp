@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <sys/stat.h>
 
+#include "Utils.hpp"
+
 class ConfigParser {
 public:
 	typedef struct stat							stats;
