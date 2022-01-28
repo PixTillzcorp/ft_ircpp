@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LocalServer.cpp }------------------------------**
 **----- Created -------------{ 2021-09-07 16:32:43 }--------------------------**
-**----- Updated -------------{ 2022-01-28 04:13:37 }--------------------------**
+**----- Updated -------------{ 2022-01-28 20:23:54 }--------------------------**
 ********************************************************************************
 */
 
@@ -25,8 +25,8 @@
 
 // ____________Canonical Form____________
 LocalServer::~LocalServer() {
-	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "\t\t+ Server closed successfuly +");
-	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "###############################################");
+	_logfile.append(LOG_DATE, LOG_PURPLE, "\t\t+ Server closed successfuly +");
+	_logfile.append(LOG_DATE, LOG_PURPLE, "###############################################");
 	return;
 }
 // LocalServer::LocalServer() { return; } /* Private standard constructor*/
@@ -75,9 +75,9 @@ inherited("", port, family), _password(password), _sm(sock(), true), _logfile(""
 // __________Member functions____________
 
 bool		LocalServer::run(void) {
-	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "\t[" + std::string(SERVER_VERSION) + "] ################################");
-	_logfile.append(LOG_DATE, LOG_DARKPURPLE, "\t\t+ Server launched successfuly +");
-	while(!isFinished()) {
+	_logfile.append(LOG_DATE, LOG_PURPLE, "\t[" + std::string(SERVER_VERSION) + "] ################################");
+	_logfile.append(LOG_DATE, LOG_PURPLE, "\t\t+ Server launched successfuly +");
+	while(!isFinished() || !_conxs.empty()) {
 		selectCall();
 		checkStd();
 		checkSock();
@@ -86,13 +86,16 @@ bool		LocalServer::run(void) {
 	return true;
 }
 
-void		LocalServer::joinNet(std::string const &host, std::string const &port, std::string const &password) {
+void		LocalServer::joinNet(std::string const &authinfo) {
 	Connection *tmp;
+	std::string host;
+	std::string port;
+	std::string password;
 
-	if (!isWhitelisted(host + "," + port + "," + password, false)) {
-		logNotify(true, "Joining \'Server\' -> [" + host + "]: Not whitelisted !");
-		return;
-	}
+	if (!Utils::splitAuthInfo(authinfo, host, port, password))
+		return logNotify(true, "Joining \'Server\': Erroneous authentication's info !");
+	if (!isWhitelisted(authinfo, false))
+		return logNotify(true, "Joining \'Server\' -> [" + host + "]: Not whitelisted !");
 	try {
 		tmp = new Connection(host, port, info.family());
 	} catch (std::exception &ex) {
@@ -212,7 +215,10 @@ void		LocalServer::finishConx(Server *sender, Server *target, bool clear, SquitC
 		breakLinks(target);
 
 	unmapName(_servnames, target->servername);
-	logNotify(true, "Ending \'Server\' connection -> [" + target->name() + "]");
+	if (!target->compare(this))
+		purge();
+	else
+		logNotify(true, "Ending \'Server\' connection -> [" + target->name() + "]");
 }
 
 void		LocalServer::finishConx(Connection *target, bool clear) {
@@ -345,7 +351,19 @@ bool		LocalServer::checkWhitelistHost(std::string const &servername, std::string
 std::string const LocalServer::whitelistPassword(std::string const &servername) const {
 	if (_whitelist.empty())
 		return std::string();
-	return (_whitelist[servername].substr(_whitelist[servername].rfind(',') + 1, std::string::npos));
+	return (_whitelist[servername].substr(_whitelist[servername].rfind(':') + 1, std::string::npos));
+}
+
+void		LocalServer::purge(void) {
+	logColored(LOG_PURPLE, "Closing \'Local Server\' [" + name() + "]");
+	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
+		if ((*it)->isClient())
+			finishConx(nullptr, static_cast<Client *>((*it)), false, "Server closing.");
+		else if ((*it)->isServer())
+			finishConx(nullptr, static_cast<Server *>((*it)), false, SquitCommand(NO_PREFIX, static_cast<Server *>((*it))->servername, "Server closing."));
+		else
+			finishConx((*it), true);
+	}
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -483,7 +501,7 @@ std::string const 	LocalServer::howManyChannel(void) const { return Utils::nbrTo
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void		LocalServer::selectCall(void) {
-	_sm.call(_conxs); //check exception later and return bool in order to fix _sm
+	_sm.call(_conxs, isFinished()); //check exception later and return bool in order to fix _sm
 	// _logfile.append(LOG_DATE, LOG_DARKPINK, " Select triggered !");
 }
 
@@ -496,7 +514,7 @@ void		LocalServer::checkStd(void) {
 	if (_sm.checkStd()) {
 		if (std::getline(std::cin, input)) {
 			if (!input.compare("EXIT") || !input.compare("Exit") || !input.compare("exit"))
-				finishConx(nullptr, this, true, SquitCommand(NO_PREFIX, name(), "Server closing."));
+				finishConx(nullptr, this, true, SquitCommand(NO_PREFIX, name(), "Console shutdown."));
 			else if (!input.compare("NET") || !input.compare("Net") || !input.compare("net"))
 				showNet();
 			else if (!input.compare("LOCAL") || !input.compare("Local") || !input.compare("local"))
@@ -513,9 +531,9 @@ void		LocalServer::checkStd(void) {
 				showChans();
 			else
 				return;
-			_logfile.append(LOG_DATE, LOG_PINK, "Command line input >> [" + input + "]");
+			_logfile.append(LOG_DATE, LOG_PINK, "Command line input $> [" + input + "]");
 		} else {
-			isFinished(true);
+			finishConx(nullptr, this, true, SquitCommand(NO_PREFIX, name(), "Console shutdown."));
 		}
 	}
 }
@@ -823,7 +841,6 @@ void		LocalServer::execServer(Server *sender, ServerCommand const &cmd) {
 		return logError(sender, "SERVER -> Wrong token for \'" + source->name() +"\'.", "SERVER Command failed.");
 	logPromote("Link", "[" + cmd.servername() + "]", true);
 	broadcastServer(sender, newLink(sender, cmd));
-
 }
 
 void		LocalServer::execNjoin(Server *sender, NjoinCommand const &cmd) {

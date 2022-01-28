@@ -20,7 +20,7 @@ public: // #####################################################################
 	SelectModule(int sock, bool std);
 
 	// __________Member functions____________
-	void	call(std::list<Connection *> &conxs);
+	void	call(std::list<Connection *> &conxs, bool purge);
 	void	addFd(int sock);
 	void	removeFd(int sock);
 	bool	checkRfds(int sock) const;

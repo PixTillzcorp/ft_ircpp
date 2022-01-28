@@ -46,7 +46,7 @@ public: // #####################################################################
 	// __________Member functions____________
 	bool		run(void);
 	
-	void		joinNet(std::string const &host, std::string const &port, std::string const &password);
+	void		joinNet(std::string const &authinfo);
 
 	// ____________Setter / Getter___________
 	// _nicknames
@@ -133,8 +133,7 @@ private: // ####################################################################
 	bool		checkWhitelistHost(std::string const &servername, std::string const &host) const;
 	std::string const	whitelistPassword(std::string const &servername) const;
 
-	void		clientDisconnected(Client *client, Command::argvec const &args);
-
+	void		purge(void);
 	// ______________Broadcast_______________
 	void	broadcastToServers(Server *sender, Command const &cmd);
 	void	broadcastToClients(Client *sender, Command const &cmd);

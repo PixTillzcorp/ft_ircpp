@@ -11,14 +11,6 @@
 #define MAX_LEN_NICK 9
 #define NO_PREFIX ""
 
-#define CHAR_SPECIAL	"[]\\`_^{|}"
-#define CHAR_DIGIT 		"0123456789"
-#define CHAR_ALPHA_LOW	"abcdefghijklmnopqrstuvwxyz"
-#define CHAR_ALPHA_UP	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-#define CHAR_FORBIDDEN	"\x00\x0a\x0d\x20\x3A"
-#define CHAR_NICKNAME	"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-"
-#define CHAR_PREFIX		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-!@."
-
 #define RPL_WELCOME				001
 #define RPL_YOURHOST			002
 #define RPL_CREATED				003

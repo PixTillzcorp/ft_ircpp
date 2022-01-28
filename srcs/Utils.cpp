@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Utils.cpp }------------------------------------**
 **----- Created -------------{ 2021-12-14 19:24:06 }--------------------------**
-**----- Updated -------------{ 2022-01-14 06:33:47 }--------------------------**
+**----- Updated -------------{ 2022-01-28 18:58:08 }--------------------------**
 ********************************************************************************
 */
 
@@ -67,7 +67,45 @@ std::string	Utils::getToken(std::string &src, std::string const del) {
 	return token;
 }
 
+bool	Utils::splitAuthInfo(std::string const &infos, std::string &host, std::string &port, std::string &pass) {
+	size_t posf;
+	size_t posl;
+
+	if (infos.empty())
+		return false;
+	posf = infos.find(':');
+	posl = infos.rfind(':');
+	if (posf == std::string::npos || posl == std::string::npos || posf == posl)
+		return false;
+	try {
+		host = infos.substr(0, posf);
+		port = infos.substr(posf + 1, posl - (posf + 1));
+		pass = infos.substr(posl + 1, std::string::npos);
+	} catch (std::out_of_range &ex) { return false; }
+	if (host.empty() || port.empty() || pass.empty())
+		return false;
+	if (!Utils::validServName(host) || !Utils::validPort(port) || !Utils::validPassword(port))
+		return false;
+	return true;
+}
+
 bool	Utils::checkNbr(std::string const &nbr) { return (nbr.find_first_not_of("0123456789") == std::string::npos); }
+
+bool	Utils::validPassword(std::string const &pass) {
+	if (pass.empty() || pass.length() > 12)
+		return false;
+	else if (pass.find_first_of(std::string(CHAR_FORBIDDEN)) != std::string::npos)
+		return false;
+	return true;
+}
+
+bool	Utils::validPort(std::string const &port) {
+	if (port.empty())
+		return false;
+	if (port.compare("6667") && port.compare("6668") && port.compare("6669"))
+		return false;
+	return true;
+}
 
 bool	Utils::validChanName(std::string const &name) {
 	if (name.empty() || name.length() < 2 || name.length() > 50)
