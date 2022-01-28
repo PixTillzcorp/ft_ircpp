@@ -286,6 +286,8 @@ clean: cleared
 fclean: clean full_clear
 	@ rm -rf ./$(OBJDIR)
 	@ rm -rf ./$(TESTDIR)
+	@ rm -rf ./$(TESTSERVERDIR)
+	@ rm -rf ./$(TESTSERVERDIR2)
 	@ rm -f $(NAME)
 
 re: re_init fclean all re_done
