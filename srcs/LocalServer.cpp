@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LocalServer.cpp }------------------------------**
 **----- Created -------------{ 2021-09-07 16:32:43 }--------------------------**
-**----- Updated -------------{ 2022-01-26 03:46:24 }--------------------------**
+**----- Updated -------------{ 2022-01-28 04:13:37 }--------------------------**
 ********************************************************************************
 */
 
@@ -104,7 +104,7 @@ void		LocalServer::joinNet(std::string const &host, std::string const &port, std
 	_conxs.push_back(tmp);
 	_sm.addFd(tmp->sock());
 	tmp->send(PassCommand(password));
-	tmp->send(ServerCommand(getArgListConnect()));
+	tmp->send(ServerCommand(serverArgsConnect()));
 	tmp->isConnect(true);
 }
 
@@ -131,17 +131,29 @@ void		LocalServer::newConx(void) {
 	_sm.addFd(_conxs.back()->sock());
 }
 
-Client		*LocalServer::newLink(Connection *sender, NickCommand const &cmd) {
-	Client	*cli;
+Server		*LocalServer::newLink(Server *sender, ServerCommand const &cmd) {
+	Server	*svr;
 	std::string modes;
 
-	try {
-		cli = new Client(sender, Utils::strToNbr(cmd.hopcount()));
-	} catch (std::exception &ex) {
+	try { svr = new Server(sender, cmd); }
+	catch (std::exception &ex) {
 		logError(sender, "Internal error from \'newLink\' !", "Internal error");
 		return (nullptr);
 	}
-	cli->isAuthentified(true);
+	_conxs.push_back(svr);
+	mapName(_servnames, cmd.servername(), svr);
+	return svr;
+}
+
+Client		*LocalServer::newLink(Server *sender, NickCommand const &cmd) {
+	Client	*cli;
+	std::string modes;
+
+	try { cli = new Client(sender, Utils::strToNbr(cmd.hopcount())); }
+	catch (std::exception &ex) {
+		logError(sender, "Internal error from \'newLink\' !", "Internal error");
+		return (nullptr);
+	}
 	_conxs.push_back(cli);
 	cli->nickname = cmd.nickname();
 	mapName(_nicknames, cmd.nickname(), cli);
@@ -152,13 +164,15 @@ Client		*LocalServer::newLink(Connection *sender, NickCommand const &cmd) {
 	cli->info.host = cmd.host();
 	modes = cmd.umode();
 	while (!modes.empty()) {
-		cli->applyModeFlag(modes[0]);
+		cli->setModeFlag(modes[0]);
 		modes.erase(0, 1);
 	}
 	return cli;
 }
 
 void		LocalServer::finishConx(Server *sender, Client *target, bool clear, std::string const &quitmsg) {
+	if (!target)
+		return;
 	if (clear)
 		target->clearMessages();
 	else if (quitmsg.empty())
@@ -174,7 +188,7 @@ void		LocalServer::finishConx(Server *sender, Client *target, bool clear, std::s
 	updateChans(target, QuitCommand(target->fullId(), quitmsg));
 
 	// notify servers
-	if (!sender->isFinished())
+	if (sender && !sender->isFinished())
 		broadcastToServers(sender, QuitCommand(target->nickname, quitmsg));
 
 	// // notify clients
@@ -184,6 +198,8 @@ void		LocalServer::finishConx(Server *sender, Client *target, bool clear, std::s
 }
 
 void		LocalServer::finishConx(Server *sender, Server *target, bool clear, SquitCommand const &cmd) {
+	if (!target)
+		return;
 	if (clear)
 		target->clearMessages();
 	target->isFinished(true);
@@ -209,12 +225,14 @@ void		LocalServer::finishConx(Connection *target, bool clear) {
 }
 
 void		LocalServer::breakLinks(Server *origin) {
+	if (!origin)
+		return;
 	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
 		if ((*it)->isLink() && !(static_cast<Server *>((*it)->link)->compare(origin))) {
 			if ((*it)->isClient())
-				finishConx(origin, static_cast<Client *>((*it)), true, msg);
+				finishConx(origin, static_cast<Client *>((*it)), true, "Netsplit from [" + origin->name() + "]");
 			else if ((*it)->isServer())
-				finishConx(nullptr, static_cast<Server *>((*it)), true, SquitCommand(NO_PREFIX, static_cast<Server *>((*it))->servername, msg));
+				finishConx(nullptr, static_cast<Server *>((*it)), true, SquitCommand(NO_PREFIX, static_cast<Server *>((*it))->servername, "Netsplit."));
 			else
 				finishConx((*it), true);
 		}
@@ -334,11 +352,33 @@ std::string const LocalServer::whitelistPassword(std::string const &servername) 
 //			 BROADCAST
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+void	LocalServer::broadcastServer(Server *sender, Server *shared) {
+	if (!shared)
+		return;
+	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
+		if ((*it)->isServer() && !(*it)->isLink()) {
+			if (!sender || sender->compare(*it))
+				(*it)->send(ServerCommand(name(), shared->serverArgsShare(static_cast<Server *>(*it)->token)));
+		}
+	}
+}
+
 void	LocalServer::broadcastToServers(Server *sender, Command const &cmd) {
 	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
 		if ((*it)->isServer() && !(*it)->isLink()) {
 			if (!sender || sender->compare(static_cast<Server *>(*it)))
 				(*it)->send(cmd);
+		}
+	}
+}
+
+void	LocalServer::broadcastClient(Server *sender, Client *shared) {
+	if (!shared)
+		return;
+	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
+		if ((*it)->isServer() && !(*it)->isLink()) {
+			if (!sender || sender->compare(*it))
+				(*it)->send(NickCommand(name(), shared->nickArgs(static_cast<Server *>(*it)->token)));
 		}
 	}
 }
@@ -352,14 +392,27 @@ void	LocalServer::broadcastToClients(Client *sender, Command const &cmd) {
 	}
 }
 
-void	LocalServer::broadcastNick(Server *sender, Client *shared) {
-	if (!shared)
+void	LocalServer::shareServs(Server *target) {
+	if (!target)
 		return;
 	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
-		if ((*it)->isServer() && !(*it)->isLink()) {
-			if (!sender || sender->compare(*it))
-				(*it)->send(NickCommand(name(), shared->nickArgs(static_cast<Server *>(*it)->token)));
+		if (target->compare(*it) && (*it)->isServer()) {
+			target->send(ServerCommand(name(), static_cast<Server *>(*it)->serverArgsShare(token)));
+			try { token = Utils::incToken(token); }
+			catch (Utils::FailStream &ex) { 
+				logNotify(true, "Internal error.");
+				return finishConx(nullptr, this, true, SquitCommand(NO_PREFIX, name(), "Internal error."));
+			}
 		}
+	}
+}
+
+void	LocalServer::shareConxs(Server *target) {
+	if (!target)
+		return;
+	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
+		if (target->compare(*it) && (*it)->isClient())
+			target->send(NickCommand(name(), static_cast<Client *>(*it)->nickArgs(target->token)));
 	}
 }
 
@@ -386,17 +439,6 @@ void	LocalServer::shareChans(Server *target) {
 				tmp.clear();
 			}
 			target->send(ModeCommand(name(), (*it)->getName(), (*it)->getModesFlags()));
-		}
-	}
-}
-
-void	LocalServer::shareConxs(Server *target) {
-	if (!target)
-		return;
-	for (conxlist_it it = _conxs.begin(); it != _conxs.end(); it++) {
-		if (target->compare(*it)) {
-			if ((*it)->isClient())
-				target->send(NickCommand(name(), static_cast<Client *>(*it)->nickArgs(target->token)));
 		}
 	}
 }
@@ -530,7 +572,7 @@ void		LocalServer::execCommand(Connection *&sender, Command cmd) {
 			try {
 				execCommandServer((svr = static_cast<Server *>(sender)), cmd);
 			} catch (Command::InvalidCommand &ex) {
-				logError(static_cast<Server *>(sender), "Invalid command.", "Invalid command.");
+				logError(static_cast<Server *>(sender), "Invalid command received from [" + sender->name() + "].", "Invalid command.");
 			}
 		}
 	}
@@ -637,6 +679,8 @@ void		LocalServer::execCommandServer(Server *sender, Command const &cmd) {
 		execNick(sender, NickCommand(cmd));
 	else if (cmd == "JOIN")
 		execJoin(sender, JoinCommand(cmd));
+	else if (cmd == "SERVER")
+		execServer(sender, ServerCommand(cmd));
 	else if (cmd == "PART")
 		execPart(sender, PartCommand(cmd));
 	else if (cmd == "PRIVMSG")
@@ -656,7 +700,7 @@ void		LocalServer::execCommandServer(Server *sender, Command const &cmd) {
 	logNotify(false, "~{" + cmd.command + "}~ from server [" + sender->name() + "] executed successfuly.");
 }
 
-// void		LocalServer::execCommandService(Connection *&sender, Command *cmd);
+// void		LocalServer::execCommandService(Service *sender, Command const &cmd);
 
 // ###### PENDING ######
 
@@ -728,10 +772,14 @@ void		LocalServer::execServer(Connection *&sender, ServerCommand const &cmd) {
 	mapName(_servnames, cmd.servername(), sender);
 	if (!sender->isConnect()) {
 		sender->send(PassCommand(whitelistPassword(cmd.servername())));
-		sender->send(ServerCommand(getArgListAccept()));
+		sender->send(ServerCommand(serverArgsAccept()));
 		static_cast<Server *>(sender)->token = token;
-		token = Utils::incToken(token);
-		//shareServs(static_cast<Server *>(sender));
+		try { token = Utils::incToken(token); }
+		catch (Utils::FailStream &ex) { 
+			logNotify(true, "Internal error.");
+			return finishConx(nullptr, this, true, SquitCommand(NO_PREFIX, name(), "Internal error."));
+		}
+		shareServs(static_cast<Server *>(sender));
 		shareConxs(static_cast<Server *>(sender));
 		shareChans(static_cast<Server *>(sender));
 	}
@@ -741,7 +789,6 @@ void		LocalServer::execServer(Connection *&sender, ServerCommand const &cmd) {
 
 void		LocalServer::execNick(Server *sender, NickCommand const &cmd) {
 	cmd.isValid();
-
 	if (_nicknames.count(cmd.nickname())) {
 		logPromote("Link", "Redundancy between two nicknames.", false);
 		logError(sender, "", "Spanning tree broken for this connection.");
@@ -750,12 +797,33 @@ void		LocalServer::execNick(Server *sender, NickCommand const &cmd) {
 	Utils::validUserName(cmd.username()) && Utils::validRealName(cmd.realname()) &&
 	Utils::checkNbr(cmd.hopcount())) {
 		logPromote("Link", "[" + cmd.nickname() + "!" + cmd.username() + "@" + cmd.host() + "]", true);
-		broadcastNick(sender, newLink(sender, cmd));
+		broadcastClient(sender, newLink(sender, cmd));
 	} else {
 		logPromote("Link", "Failed !", false);
 		logNotify(true, "Server \'" + sender->name() + "\' sent an erroneous \'" + cmd.command + "\' command !");
 		logError(sender, "", "Erroneous command.");
 	}
+}
+
+void		LocalServer::execServer(Server *sender, ServerCommand const &cmd) {
+	Server *source;
+
+	cmd.isValid();
+	if (_servnames.count(cmd.servername())) {
+		logPromote("Link", "Redundancy between two servernames.", false);
+		return logError(sender, "", "Spanning tree broken for this connection.");
+	}
+	if (cmd.prefix.empty() || !(source = findServer(cmd.prefix)))
+		return logError(sender, "SERVER -> Unknown source server.", "SERVER Command failed.");
+	if (!Utils::validServName(cmd.servername()))
+		return logError(sender, "SERVER -> Wrong server name.", "SERVER Command failed.");
+	if (!Utils::checkNbr(cmd.hopcount()))
+		return logError(sender, "SERVER -> Wrong Hop count.", "SERVER Command failed.");
+	if (!source->isToken(cmd.token()))
+		return logError(sender, "SERVER -> Wrong token for \'" + source->name() +"\'.", "SERVER Command failed.");
+	logPromote("Link", "[" + cmd.servername() + "]", true);
+	broadcastServer(sender, newLink(sender, cmd));
+
 }
 
 void		LocalServer::execNjoin(Server *sender, NjoinCommand const &cmd) {
@@ -833,7 +901,13 @@ void		LocalServer::execMode(Server *sender, ModeCommand const &cmd) {
 			while (!modes.empty()) {
 				try { target->applyModeFlag(modes[0], set); }
 				catch (Command::InvalidCommand &ex) {
-					return logError(sender, "MODE -> Invalid mode string \'" + modes + "\'.", "MODE Command failed.");
+					if (modes[0] == CLIENT_FLAG_AWAY || modes[0] == CLIENT_FLAG_OPERATOR) {
+						if (set)
+							target->setModeFlag(modes[0]);
+						else
+							target->unsetModeFlag(modes[0]);
+					} else
+						return logError(sender, "MODE -> Invalid mode string \'" + modes + "\'.", "MODE Command failed.");
 				}
 				modes.erase(0, 1);
 			}
@@ -884,9 +958,9 @@ void		LocalServer::execJoin(Server *sender, JoinCommand const &cmd) {
 			else if ((code = chan->join(source))) { // add key arg later for -k mode
 				continue; // treat error codes (banned, not invited, ...)
 			}
-			broadcastToServers(sender, cmd);
 		}
 	}
+	broadcastToServers(sender, cmd);
 }
 
 void		LocalServer::execPart(Server *sender, PartCommand const &cmd) {
@@ -992,7 +1066,7 @@ void		LocalServer::execNick(Client *sender, NickCommand const &cmd) {
 			numericReply(sender, RPL_YOURHOST);
 			numericReply(sender, RPL_CREATED);
 			numericReply(sender, RPL_MYINFO);
-			broadcastNick(nullptr, sender);
+			broadcastClient(nullptr, sender);
 		}
 		else {
 			unmapName(_nicknames, sender->nickname);
@@ -1024,7 +1098,7 @@ void		LocalServer::execUser(Client *sender, UserCommand const &cmd) {
 			numericReply(sender, RPL_YOURHOST);
 			numericReply(sender, RPL_CREATED);
 			numericReply(sender, RPL_MYINFO);
-			broadcastNick(nullptr, sender);
+			broadcastClient(nullptr, sender);
 		}
 		else {
 			unmapName(_usernames, sender->username);
@@ -1164,9 +1238,9 @@ void		LocalServer::execJoin(Client *sender, JoinCommand const &cmd) {
 			if (chan->hasTopic())
 				numericReply(sender, RPL_TOPIC, chan);
 			execNames(sender, NamesCommand(NO_PREFIX, chan->getName()));
-			broadcastToServers(nullptr, JoinCommand(sender->nickname, cmd.target()));
 		}
 	}
+	broadcastToServers(nullptr, JoinCommand(sender->nickname, cmd.target()));
 }
 
 void		LocalServer::execPart(Client *sender, PartCommand const &cmd) {
@@ -1225,6 +1299,7 @@ void		LocalServer::execOper(Client *sender, OperCommand const &cmd) {
 		sender->isOperator(true);
 		numericReply(sender, RPL_YOUREOP);
 		logNotify(false, "[" + sender->nickname + "] is now an IRC operator !");
+		broadcastToServers(nullptr, ModeCommand(sender->name(), sender->name(), ":+o"));
 	}
 	else
 		numericReply(sender, ERR_PASSWDMISMATCH);
@@ -1284,10 +1359,12 @@ void		LocalServer::execAway(Client *sender, AwayCommand const &cmd) {
 		sender->isAway(true);
 		sender->awaymsg = cmd.message();
 		numericReply(sender, RPL_NOWAWAY);
+		broadcastToServers(nullptr, ModeCommand(sender->name(), sender->name(), ":+a"));
 		return logNotify(false, "[" + sender->nickname + "] is now marked as being away !");
 	}
 	sender->isAway(false);
 	numericReply(sender, RPL_UNAWAY);
+	broadcastToServers(nullptr, ModeCommand(sender->name(), sender->name(), ":-a"));
 	logNotify(false, "[" + sender->nickname + "] is no longer away !");
 }
 
@@ -1732,18 +1809,18 @@ void		LocalServer::showNet(void) const {
 			tmp = *it;
 			if (tmp->isClient()) {
 				if (tmp->isLink())
-					DEBUG_LDISPCB(COUT, "Client.L ", *(static_cast<Client *>(tmp)), YELLOW, '{');
+					DEBUG_LDISPCB(COUT, "Client*\t", *(static_cast<Client *>(tmp)), YELLOW, '{');
 				else
-					DEBUG_LDISPCB(COUT, "Client   ", *(static_cast<Client *>(tmp)), GREEN, '{');
+					DEBUG_LDISPCB(COUT, "Client\t", *(static_cast<Client *>(tmp)), GREEN, '{');
 			}
 			else if (tmp->isServer()){
 				if (tmp->isLink())
-					DEBUG_LDISPCB(COUT, "Server.L ", *(static_cast<Server *>(tmp)), YELLOW, '{');
+					DEBUG_LDISPCB(COUT, "Server*\t", *(static_cast<Server *>(tmp)), YELLOW, '{');
 				else
-					DEBUG_LDISPCB(COUT, "Server   ", *(static_cast<Server *>(tmp)), BLUE, '{');
+					DEBUG_LDISPCB(COUT, "Server\t", *(static_cast<Server *>(tmp)), BLUE, '{');
 			}
 			else
-				DEBUG_LDISPCB(COUT, "Pending  ", *tmp, ORANGE, '{');
+				DEBUG_LDISPCB(COUT, "Pending\t", *tmp, ORANGE, '{');
 		}
 	}
 	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);

@@ -597,7 +597,6 @@ public:
 	// _____________Constructor______________
 	ServerCommand(std::string const prefix, inherited::argvec const &args);
 	ServerCommand(inherited::argvec const &args);
-	// ServerCommand(std::string const prefix, ServerCommand const &cmd);
 	ServerCommand(inherited const &src);
 
 	// __________Member functions____________

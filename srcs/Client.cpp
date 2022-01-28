@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2022-01-26 03:07:43 }--------------------------**
+**----- Updated -------------{ 2022-01-28 04:06:04 }--------------------------**
 ********************************************************************************
 */
 
@@ -45,7 +45,9 @@ Client::Client(Connection *&src, UserCommand const &cmd) : inherited(*src), mode
 	delete src;
 }
 
-Client::Client(Connection *link, size_t hop) : inherited(link, CONX_CLIENT, hop) { return; }
+Client::Client(Connection *link, size_t hop) :
+	inherited(link, CONX_CLIENT | CONX_AUTHEN, hop),
+	modes(CLIENT_NOMODE) { return; }
 
 // __________Member functions____________
 std::string const	&Client::name(void) const {
@@ -72,7 +74,8 @@ Command::argvec		Client::nickArgs(std::string const &servertoken) const {
 	Command::argvec ret;
 
 	ret.push_back(nickname);
-	ret.push_back("2");
+	try { ret.push_back(Utils::nbrToStr(hop)); }
+	catch (Utils::FailStream &ex) { ret.push_back("none"); }
 	ret.push_back(username);
 	ret.push_back(hostname());
 	ret.push_back(servertoken);
@@ -185,7 +188,7 @@ void				Client::applyModeFlag(char flag, bool set) {
 		isOperator(set);
 }
 
-void				Client::applyModeFlag(char flag) {
+void				Client::setModeFlag(char flag) {
 	std::string	const flags = CLIENT_MODE_FLAGS;
 
 	if (flags.find(flag) == std::string::npos)
@@ -202,6 +205,25 @@ void				Client::applyModeFlag(char flag) {
 		isOperator(true);
 	else if (flag == CLIENT_FLAG_LOCALOP)
 		isLocalop(true);
+}
+
+void				Client::unsetModeFlag(char flag) {
+	std::string	const flags = CLIENT_MODE_FLAGS;
+
+	if (flags.find(flag) == std::string::npos)
+		return;
+	else if (flag == CLIENT_FLAG_AWAY)
+		isAway(false);
+	else if (flag == CLIENT_FLAG_INVISIBLE)
+		isInvisible(false);
+	else if (flag == CLIENT_FLAG_WALLOPS)
+		isWallops(false);
+	else if (flag == CLIENT_FLAG_RESTRICTED)
+		isRestricted(false);
+	else if (flag == CLIENT_FLAG_OPERATOR)
+		isOperator(false);
+	else if (flag == CLIENT_FLAG_LOCALOP)
+		isLocalop(false);
 }
 
 std::string	const	Client::getModesFlags(void) const {
@@ -237,18 +259,18 @@ void				Client::applyMode(unsigned short mode, bool set) {
 
 std::ostream		&operator<<(std::ostream &flux, Client const &src) {
 	flux << static_cast<Connection const &>(src);
-	flux << "M[";
-	flux << (src.isAway() ? "1" : "0");
-	flux << (src.isInvisible() ? "1" : "0");
-	flux << (src.isWallops() ? "1" : "0");
-	flux << (src.isRestricted() ? "1" : "0");
-	flux << (src.isOperator() ? "1" : "0");
-	flux << (src.isLocalop() ? "1" : "0");
-	flux << "]n[" << src.nickname << "]";
-	flux << "u[" << src.username << "]";
-	flux << "r[" << src.realname << "]";
+	flux << "[";
+	flux << (src.isAway() ? "a" : "_");
+	flux << (src.isInvisible() ? "i" : "_");
+	flux << (src.isWallops() ? "w" : "_");
+	flux << (src.isRestricted() ? "r" : "_");
+	flux << (src.isOperator() ? "o" : "_");
+	flux << (src.isLocalop() ? "O" : "_");
+	flux << "]\t| [" << src.nickname << "]";
+	flux << "[" << src.username << "]";
+	flux << "[" << src.realname << "]";
 	if (src.isLink())
-		flux << std::endl << "Link [" << src.link->name() << "]";
+		flux << std::endl << "\tLink -> [" << src.link->name() << "]";
 	if (src.hasChans()) {
 		flux << std::endl << "\t\tchans -> ";
 		for (Client::chanlist_cit it = src.chans.begin(); it != src.chans.end(); it++)

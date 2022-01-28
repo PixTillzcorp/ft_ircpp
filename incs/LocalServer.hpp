@@ -122,7 +122,8 @@ private: // ####################################################################
 	void		finishChan(Channel *target);
 	Channel		*findChannel(std::string const &name);
 
-	Client		*newLink(Connection *sender, NickCommand const &cmd);
+	Server		*newLink(Server *sender, ServerCommand const &cmd);
+	Client		*newLink(Server *sender, NickCommand const &cmd);
 
 	void		mapName(namesmap &names, std::string const &name, Connection *conx);
 	bool		mapHasName(namesmap &names, std::string const &name);
@@ -135,11 +136,15 @@ private: // ####################################################################
 	void		clientDisconnected(Client *client, Command::argvec const &args);
 
 	// ______________Broadcast_______________
-	void	broadcastNick(Server *sender, Client *shared);
 	void	broadcastToServers(Server *sender, Command const &cmd);
 	void	broadcastToClients(Client *sender, Command const &cmd);
-	void	shareChans(Server *target);
+
+	void	broadcastServer(Server *sender, Server *shared);
+	void	broadcastClient(Server *sender, Client *shared);
+
+	void	shareServs(Server *target);
 	void	shareConxs(Server *target);
+	void	shareChans(Server *target);
 
 	// ___________Connection count___________
 	unsigned int		howMany(char flag) const;
@@ -177,6 +182,7 @@ private: // ####################################################################
 
 	// server
 	void		execNick(Server *sender, NickCommand const &cmd);
+	void		execServer(Server *sender, ServerCommand const &cmd);
 	void		execNjoin(Server *sender, NjoinCommand const &cmd);
 	void		execMode(Server *sender, ModeCommand const &cmd);
 	void		execJoin(Server *sender, JoinCommand const &cmd);

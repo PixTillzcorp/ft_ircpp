@@ -83,9 +83,8 @@ public: // #####################################################################
 	} FailGai;
 
 private: // ####################################################################
-	bool				isIP(u_int16_t family) const;
-	std::string	const	nbrToStr(unsigned int nbr) const;
-	void				retrieveInfo(u_int16_t family, bool bind) throw(FailGai);
+	bool isIP(u_int16_t family) const;
+	void retrieveInfo(u_int16_t family, bool bind) throw(FailGai);
 };
 
 // Debug function

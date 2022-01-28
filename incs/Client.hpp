@@ -63,7 +63,8 @@ public: // #####################################################################
 	void				addChanToList(std::string const &chan);
 	void				removeChanFromList(std::string const &chan);
 	void				applyModeFlag(char flag, bool set);
-	void				applyModeFlag(char flag);
+	void				setModeFlag(char flag);
+	void				unsetModeFlag(char flag);
 	bool				checkModeFlag(char flag) const;
 	std::string	const	getModesFlags(void) const;
 

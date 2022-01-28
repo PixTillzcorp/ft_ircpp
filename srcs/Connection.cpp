@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2022-01-21 02:55:29 }--------------------------**
+**----- Updated -------------{ 2022-01-27 03:51:34 }--------------------------**
 ********************************************************************************
 */
 
@@ -179,15 +179,17 @@ const char *Connection::FailClose::what() const throw() {
 // ########################################
 
 std::ostream &operator<<(std::ostream &flux, Connection const &src) {
-	flux << "Sock(" << src.sock() << ")flags[";
-	flux << (src.isLocal() ? "1" : "0");
-	flux << (src.isServer() ? "1" : "0");
-	flux << (src.isClient() ? "1" : "0");
-	flux << (src.isService() ? "1" : "0");
-	flux << (src.isConnect() ? "1" : "0");
-	flux << (src.isIPv6() ? "1" : "0");
-	flux << (src.isAuthentified() ? "1" : "0");
-	flux << (src.isFinished() ? "1" : "0");
+	if (!src.isLink())
+		flux << "S(" << src.sock() << ")";
+	flux << "\t[";
+	flux << (src.isLocal() ? "L" : "_");
+	flux << (src.isServer() ? "S" : "_");
+	flux << (src.isClient() ? "C" : "_");
+	flux << (src.isService() ? "s" : "_");
+	flux << (src.isConnect() ? "c" : "_");
+	flux << (src.isIPv6() ? "6" : "_");
+	flux << (src.isAuthentified() ? "A" : "_");
+	flux << (src.isFinished() ? "F" : "_");
 	flux << "]";
 	 // << src.info;
 	return flux;

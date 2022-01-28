@@ -257,16 +257,16 @@ testenv: $(NAME)
 	@ mkdir -p ./$(TESTSERVERDIR)
 	@ cp ./$(NAME) ./$(TESTSERVERDIR)
 	@ echo "main.pixtillz.serv.fr = localhost,6667,etoile" > ./$(TESTSERVERDIR)/whitelist.config
-	@ echo "test2.pixtillz.serv.fr = localhost,6668,jax" > ./$(TESTSERVERDIR)/whitelist.config
-	@ echo "servername = test.pixtillz.serv.fr\noppass = monkey\nlogfile = server.log\ndescription = Test server" > ./$(TESTSERVERDIR)/server.config
+	@ echo "test2.pixtillz.serv.fr = localhost,6668,jax" >> ./$(TESTSERVERDIR)/whitelist.config
+	@ echo "servername = test.pixtillz.serv.fr\noppass = monkey\nlogfile = server.log\ndescription = Test server n_1" > ./$(TESTSERVERDIR)/server.config
 	@ echo "test environment successfuly created."
 
 testenv2: testenv
 	@ mkdir -p ./$(TESTSERVERDIR2)
 	@ cp ./$(NAME) ./$(TESTSERVERDIR2)
 	@ echo "main.pixtillz.serv.fr = localhost,6667,etoile" > ./$(TESTSERVERDIR2)/whitelist.config
-	@ echo "test2.pixtillz.serv.fr = localhost,6668,jax" > ./$(TESTSERVERDIR2)/whitelist.config
-	@ echo "servername = test.pixtillz.serv.fr\noppass = monkey\nlogfile = server.log\ndescription = Test server" > ./$(TESTSERVERDIR)/server.config
+	@ echo "test.pixtillz.serv.fr = localhost,6669,timmy" >> ./$(TESTSERVERDIR2)/whitelist.config
+	@ echo "servername = test2.pixtillz.serv.fr\noppass = monkey\nlogfile = server.log\ndescription = Test server n_2" > ./$(TESTSERVERDIR2)/server.config
 	@ echo "test environment successfuly created."
 
 deletetestenv:

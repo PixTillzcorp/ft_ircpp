@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Server.cpp }-----------------------------------**
 **----- Created -------------{ 2021-05-26 16:47:47 }--------------------------**
-**----- Updated -------------{ 2022-01-17 09:55:42 }--------------------------**
+**----- Updated -------------{ 2022-01-28 04:09:54 }--------------------------**
 ********************************************************************************
 */
 
@@ -64,7 +64,19 @@ Server::Server(std::string const &host, std::string const &port, u_int16_t famil
 
 // __________Member functions____________
 std::string const		&Server::name(void) const { return servername; }
-Command::argvec const	Server::getArgListConnect(void) const {
+
+Command::argvec const	Server::serverArgsShare(std::string const &servertoken) const {
+	Command::argvec ret;
+
+	ret.push_back(servername);
+	try { ret.push_back(Utils::nbrToStr(hop)); }
+	catch (Utils::FailStream &ex) { ret.push_back("none"); }
+	ret.push_back(servertoken);
+	ret.push_back(desc);
+	return ret;
+}
+
+Command::argvec const	Server::serverArgsConnect(void) const {
 	Command::argvec ret;
 
 	ret.push_back(servername);
@@ -72,7 +84,7 @@ Command::argvec const	Server::getArgListConnect(void) const {
 	return ret;
 }
 
-Command::argvec const	Server::getArgListAccept(void) const {
+Command::argvec const	Server::serverArgsAccept(void) const {
 	Command::argvec ret;
 
 	ret.push_back(servername);
@@ -97,8 +109,8 @@ bool	Server::isToken(std::string const &cmp) const { return (!token.compare(cmp)
 
 std::ostream &operator<<(std::ostream &flux, Server const &src) {
 	flux << static_cast<Connection const &>(src);
-	flux << "name[" << src.servername << "]v[" << src.implem << "|" << src.version << "]tok[" << src.token << "]";
+	flux << "[" << src.version << "]\t| [" << src.servername << "] - [" << src.implem << "][" << src.token << "]";
 	if (!src.desc.empty())
-		flux << std::endl << "\t\tdesc ->" << src.desc;
+		flux << std::endl << "\tDesc -> [" << src.desc << "]";
 	return flux;
 }

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Command.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-21 12:59:56 }--------------------------**
-**----- Updated -------------{ 2022-01-21 03:45:46 }--------------------------**
+**----- Updated -------------{ 2022-01-27 05:06:24 }--------------------------**
 ********************************************************************************
 */
 
@@ -62,14 +62,12 @@ Command::Command(Message msg) : inherited(msg) {
 			{
 				shard = shard.substr(1, std::string::npos);
 				del = " :";
-				if (!shard.empty()) {
-					if (data.empty())
-						args.push_back(shard);
-					else {
-						shard += " " + data.substr(0, data.find(del));
-						data.erase(0, data.find(del) + (data.size() == data.substr(0, data.find(del)).size() ? 0 : del.size()));
-						args.push_back(shard);
-					}
+				if (data.empty())
+					args.push_back(shard);
+				else {
+					shard += " " + data.substr(0, data.find(del));
+					data.erase(0, data.find(del) + (data.size() == data.substr(0, data.find(del)).size() ? 0 : del.size()));
+					args.push_back(shard);
 				}
 			}
 		}
@@ -123,7 +121,7 @@ Command::Command(std::string const &prefix, std::string const &command, std::str
 // __________Member functions____________
 void	Command::addArg(std::string arg) {
 	Utils::clearSpaces(arg, false);
-	if (!arg.empty() && arg.compare(":")) {
+	if (!arg.empty()) {
 		if (!args.empty() && (args.back().find(' ') != std::string::npos ||
 		!args.back().rfind(":", 0)) && arg[0] != ':')
 			content.append(" :" + arg);
