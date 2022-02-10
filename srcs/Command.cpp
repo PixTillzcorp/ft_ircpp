@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Command.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-21 12:59:56 }--------------------------**
-**----- Updated -------------{ 2022-01-27 05:06:24 }--------------------------**
+**----- Updated -------------{ 2022-02-10 01:53:12 }--------------------------**
 ********************************************************************************
 */
 
@@ -51,7 +51,7 @@ Command::Command(Message msg) : inherited(msg) {
 		if (command.empty())
 		{
 			if (prefix.empty() && shard[0] == ':')
-				prefix = shard.substr(1, std::string::npos);
+				prefix = shard.substr(1, STRNPOS);
 			else
 				command = shard;
 		}
@@ -60,7 +60,7 @@ Command::Command(Message msg) : inherited(msg) {
 				args.push_back(shard);
 			else
 			{
-				shard = shard.substr(1, std::string::npos);
+				shard = shard.substr(1, STRNPOS);
 				del = " :";
 				if (data.empty())
 					args.push_back(shard);
@@ -78,7 +78,6 @@ Command::Command(std::string const &prefix, std::string const &command, Command:
 																										prefix(prefix),
 																										command(command),
 																										args(args) {
-	argvec::const_iterator it = args.begin();
 	std::string content;
 	bool lst = false;
 
@@ -92,20 +91,14 @@ Command::Command(std::string const &prefix, std::string const &command, Command:
 	if (!prefix.empty() && !command.empty())
 		content += ' ';
 	content += command;
-	if (args.size() > 0)
-		content += ' ';
-	while (it != args.end())
+	for (argvec_cit it = args.begin(); it != args.end(); it++)
 	{
-		if (!lst && (*it).find(' ') == std::string::npos)
-			content += (*it);
-		else
-		{
-			content += ':' + (*it);
+		if (!lst && it->find(' ') == STRNPOS && (*it).rfind(":", 0) == STRNPOS)
+			content += ' ' + (*it);
+		else {
+			content += (!(*it).rfind(":", 0) ? " " : " :") + (*it);
 			lst = true;
 		}
-		it++;
-		if (it != args.end())
-			content += ' ';
 	}
 	static_cast<inherited &>(*this) = inherited(content);
 }
@@ -120,15 +113,20 @@ Command::Command(std::string const &prefix, std::string const &command, std::str
 
 // __________Member functions____________
 void	Command::addArg(std::string arg) {
+	bool lst = false;
+
 	Utils::clearSpaces(arg, false);
 	if (!arg.empty()) {
-		if (!args.empty() && (args.back().find(' ') != std::string::npos ||
-		!args.back().rfind(":", 0)) && arg[0] != ':')
-			content.append(" :" + arg);
-		else if (arg.find(' ') == std::string::npos || arg[0] == ':')
-			content.append(" " + arg);
-		else
-			content.append(" :" + arg);
+		if (!args.empty() && args.back().find(' ') != STRNPOS)
+			content.append((arg[0] == ':' ? " " : " :") + arg);
+		else {
+			if (arg[0] == ':')
+				lst = true;
+			if (!lst && arg.find(' ') == STRNPOS)
+				content.append(" " + arg);
+			else
+				content.append((arg[0] == ':' ? " " : " :") + arg);
+		}
 		args.push_back(arg);
 	}
 }
@@ -147,7 +145,7 @@ Message Command::message(void) const { return inherited(static_cast<inherited co
 void Command::isValid(void) const throw(Command::InvalidCommand) {
 	if (command.empty() || argNbr() > 15 || content.size() > 510)
 		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
-	else if (!prefix.empty() && prefix.find_first_not_of(CHAR_PREFIX) != std::string::npos)
+	else if (!prefix.empty() && prefix.find_first_not_of(CHAR_PREFIX) != STRNPOS)
 		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
 }
 

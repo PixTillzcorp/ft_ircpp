@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ AddrInfo.cpp }---------------------------------**
 **----- Created -------------{ 2021-12-03 02:58:12 }--------------------------**
-**----- Updated -------------{ 2021-12-09 16:42:12 }--------------------------**
+**----- Updated -------------{ 2022-02-02 23:37:50 }--------------------------**
 ********************************************************************************
 */
 
@@ -99,7 +99,7 @@ void const		*AddrInfo::getAddress(void) const {
 		return (&(reinterpret_cast<t_saddr const *>(&ai_addr)->sin_addr));
 }
 
-u_int16_t const AddrInfo::getPort(void) const {
+u_int16_t		 AddrInfo::getPort(void) const {
 	if (isIPv6())
 		return (reinterpret_cast<t_saddr6 const *>(&ai_addr)->sin6_port);
 	else

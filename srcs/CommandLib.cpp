@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ CommandLib.cpp }-------------------------------**
 **----- Created -------------{ 2021-06-14 11:07:57 }--------------------------**
-**----- Updated -------------{ 2022-01-21 03:57:56 }--------------------------**
+**----- Updated -------------{ 2022-02-10 14:05:59 }--------------------------**
 ********************************************************************************
 */
 
@@ -664,6 +664,127 @@ void		WhoCommand::isValid(void) const throw(inherited::InvalidCommand) {
 }
 
 std::string		WhoCommand::mask(void) const { return (argX(0)); }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ____________Canonical Form____________
+ConnectCommand::~ConnectCommand(void) { return; }
+// ConnectCommand::ConnectCommand(void) { return; }
+ConnectCommand::ConnectCommand(ConnectCommand const &cpy) :
+	inherited(static_cast<inherited const &>(cpy)) { return; }
+ConnectCommand &ConnectCommand::operator=(ConnectCommand const &cpy) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(cpy);
+	return *this;
+}
+
+// _____________Constructor______________
+ConnectCommand::ConnectCommand(inherited const &src) : inherited(src) { return; }
+ConnectCommand::ConnectCommand(std::string const &prefix, inherited::argvec const &args) : inherited(prefix, "CONNECT", args) { return; }
+ConnectCommand::ConnectCommand(std::string const &prefix, std::string const &target, std::string const &port) :
+	inherited(prefix, "CONNECT", inherited::argvec()) {
+	addArg(target);
+	addArg(port);
+}
+
+// __________Member functions____________
+void		ConnectCommand::isValid(void) const throw(inherited::InvalidCommand) {
+	inherited::isValid();
+	if (!argNbr(2))
+		throw (inherited::InvalidCommand(ERR_WRONGPARAMSNUMBER));
+}
+
+std::string		ConnectCommand::target(void) const { return (argX(0)); }
+std::string		ConnectCommand::port(void) const { return (argX(1)); }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ____________Canonical Form____________
+WallopsCommand::~WallopsCommand(void) { return; }
+// WallopsCommand::WallopsCommand(void) { return; }
+WallopsCommand::WallopsCommand(WallopsCommand const &cpy) :
+	inherited(static_cast<inherited const &>(cpy)) { return; }
+WallopsCommand &WallopsCommand::operator=(WallopsCommand const &cpy) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(cpy);
+	return *this;
+}
+
+// _____________Constructor______________
+WallopsCommand::WallopsCommand(inherited const &src) : inherited(src) { return; }
+WallopsCommand::WallopsCommand(std::string const &prefix, std::string const &message) :
+	inherited(prefix, "WALLOPS", message) { return; }
+
+// __________Member functions____________
+void		WallopsCommand::isValid(void) const throw(inherited::InvalidCommand) {
+	inherited::isValid();
+	if (!argNbr(1))
+		throw (inherited::InvalidCommand(ERR_WRONGPARAMSNUMBER));
+}
+
+std::string		WallopsCommand::message(void) const { return (argX(0)); }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ____________Canonical Form____________
+InviteCommand::~InviteCommand(void) { return; }
+// InviteCommand::InviteCommand(void) { return; }
+InviteCommand::InviteCommand(InviteCommand const &cpy) :
+	inherited(static_cast<inherited const &>(cpy)) { return; }
+InviteCommand &InviteCommand::operator=(InviteCommand const &cpy) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(cpy);
+	return *this;
+}
+
+// _____________Constructor______________
+InviteCommand::InviteCommand(inherited const &src) : inherited(src) { return; }
+InviteCommand::InviteCommand(std::string const &prefix, inherited::argvec const &args) : inherited(prefix, "INVITE", args) { return; }
+InviteCommand::InviteCommand(std::string const &prefix, std::string const &nick, std::string const &chan) :
+	inherited(prefix, "INVITE", inherited::argvec()) {
+	addArg(nick);
+	addArg(chan);
+}
+
+// __________Member functions____________
+void		InviteCommand::isValid(void) const throw(inherited::InvalidCommand) {
+	inherited::isValid();
+	if (!argNbr(2))
+		throw (inherited::InvalidCommand(ERR_WRONGPARAMSNUMBER));
+}
+
+std::string		InviteCommand::nick(void) const { return (argX(0)); }
+std::string		InviteCommand::chan(void) const { return (argX(1)); }
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+// ____________Canonical Form____________
+KickCommand::~KickCommand(void) { return; }
+// KickCommand::KickCommand(void) { return; }
+KickCommand::KickCommand(KickCommand const &cpy) :
+	inherited(static_cast<inherited const &>(cpy)) { return; }
+KickCommand &KickCommand::operator=(KickCommand const &cpy) {
+	static_cast<inherited &>(*this) = static_cast<inherited const &>(cpy);
+	return *this;
+}
+
+// _____________Constructor______________
+KickCommand::KickCommand(inherited const &src) : inherited(src) { return; }
+KickCommand::KickCommand(std::string const &prefix, inherited::argvec const &args) : inherited(prefix, "KICK", args) { return; }
+KickCommand::KickCommand(std::string const &prefix, std::string const &chan, std::string const &nicks, std::string const &msg) :
+	inherited(prefix, "KICK", inherited::argvec()) {
+	addArg(chan);
+	addArg(nicks);
+	addArg(msg);
+}
+
+// __________Member functions____________
+void		KickCommand::isValid(void) const throw(inherited::InvalidCommand) {
+	inherited::isValid();
+	if (!argNbr(2) && !argNbr(3))
+		throw (inherited::InvalidCommand(ERR_WRONGPARAMSNUMBER));
+}
+
+std::string		KickCommand::chan(void) const { return (argX(0)); }
+std::string		KickCommand::nicks(void) const { return (argX(1)); }
+std::string		KickCommand::comment(void) const { return (argX(2)); }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

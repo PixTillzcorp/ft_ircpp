@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2022-01-27 03:51:34 }--------------------------**
+**----- Updated -------------{ 2022-02-10 18:19:10 }--------------------------**
 ********************************************************************************
 */
 
@@ -21,7 +21,7 @@
 Connection::~Connection(void) { return; }
 Connection::Connection(void) { return; }
 Connection::Connection(Connection const &cpy) :
-	info(cpy.info), stream(cpy.stream), status(cpy.status), hop(cpy.hop), link(cpy.link) { return; }
+	info(cpy.info), stream(cpy.stream), status(cpy.status), link(cpy.link), hop(cpy.hop) { return; }
 Connection	&Connection::operator=(Connection const &cpy) {
 	info = cpy.info;
 	stream = cpy.stream;
@@ -33,10 +33,12 @@ Connection	&Connection::operator=(Connection const &cpy) {
 
 // ____________Constructors______________
 Connection::Connection(std::string const &host, std::string const &port, u_int16_t family) throw(Connection::ConxInit) :
-	status(family == AF_INET6 ? CONX_IPV6 : CONX_NOFLAG), link(NO_LINK), hop(1) {
+	status(CONX_LOCAL), link(NO_LINK), hop(1) {
 	int yes = 1;
 	int	sock;
 
+	if (family == AF_INET6 || family == AF_UNSPEC)
+		isIPv6(true);
 	try { info = SockInfo(host, port, family, (host.empty() ? BIND : CONNECT)); }
 	catch (std::exception &ex) { throw(Connection::ConxInit("SockInfo() constructor failed.")); }
 	if ((sock = socket(info.family(), info.socktype(), info.protocol())) == -1)
@@ -75,7 +77,7 @@ Connection::Connection(int lsock) throw(Connection::ConxInit) : status(0), link(
 }
 
 Connection::Connection(Connection *link, unsigned short status, size_t hop) :
-	status(status), link(link), hop(hop), stream(-1) { return; }
+	stream(-1), status(status), link(link), hop(hop) { return; }
 
 // __________Member functions____________
 std::string const &Connection::hostname(void) const { return info.host; }
@@ -86,13 +88,14 @@ void	Connection::write(void) throw(SockStream::SendFunctionException) { stream.w
 int		Connection::sock(void) const { return stream.getSock(); }
 bool	Connection::hasOutputMessage(void) const { return (stream.hasOutputMessage()); }
 bool	Connection::hasInputMessage(void) const { return (stream.hasInputMessage()); }
-void	Connection::clearMessages(void) { stream.clear(); }
+void	Connection::clearInputMessages(void) { stream.clearIn(); }
+void	Connection::clearOutputMessages(void) { stream.clearOut(); }
 void	Connection::send(Message const &msg) {
-	if (!isFinished())
+	if (!isFinished() && !isLink())
 		stream.queueMessage(msg);
 }
 void	Connection::send(Command const &cmd) {
-	if (!isFinished())
+	if (!isFinished() && !isLink())
 		stream.queueMessage(cmd.message());
 }
 Message Connection::getLastMessage(void) { return (stream.getLastMessage()); }

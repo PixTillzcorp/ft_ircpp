@@ -11,11 +11,11 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2022-01-28 04:06:04 }--------------------------**
+**----- Updated -------------{ 2022-02-08 03:48:07 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/Client.hpp"
+#include "Client.hpp"
 
 // ____________Canonical Form____________
 Client::~Client(void) { return; }
@@ -111,6 +111,19 @@ bool				Client::compare(Client *cmp) const {
 	return true;
 }
 
+bool				Client::checkNickname(std::string const &cmp) const {
+	return (!nickname.compare(cmp));
+}
+
+bool				Client::checkUsername(std::string const &cmp) const {
+	return (!username.compare(cmp));
+}
+
+bool				Client::checkRealname(std::string const &cmp) const {
+	return (!realname.compare(cmp));
+}
+
+
 bool				Client::validNames(void) const {
 	if (!Utils::validNickName(nickname))
 		return false;
@@ -123,9 +136,9 @@ bool				Client::validNames(void) const {
 
 bool				Client::isAway(void) const			{ return (modes & CLIENT_AWAY); }
 bool				Client::isInvisible(void) const		{ return (modes & CLIENT_INVISIBLE); }
-bool				Client::isWallops(void) const		{ return (modes & CLIENT_WALLOPS); }
+bool				Client::isWallops(void) const		{ return ((modes & CLIENT_WALLOPS) || isOperator()); }
 bool				Client::isRestricted(void) const	{ return (modes & CLIENT_RESTRICTED); }
-bool				Client::isOperator(void) const		{ return (modes & CLIENT_OPERATOR || isLocalop()); }
+bool				Client::isOperator(void) const		{ return ((modes & CLIENT_OPERATOR) || isLocalop()); }
 bool				Client::isLocalop(void) const		{ return (modes & CLIENT_LOCALOP); }
 
 void				Client::isAway(bool set)			{ applyMode(CLIENT_AWAY, set); }
@@ -176,7 +189,9 @@ void				Client::applyModeFlag(char flag, bool set) {
 
 	if (flags.find(flag) == std::string::npos)
 		throw (Command::InvalidCommand(ERR_UMODEUNKNOWNFLAG));
-	else if (flag == CLIENT_FLAG_AWAY || (flag == CLIENT_FLAG_OPERATOR && set))
+	else if (flag == CLIENT_FLAG_AWAY)
+		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
+	else if (flag == CLIENT_FLAG_OPERATOR && (set || isLocalop()))
 		throw (Command::InvalidCommand(ERR_DISCARDCOMMAND));
 	else if (flag == CLIENT_FLAG_INVISIBLE)
 		isInvisible(set);

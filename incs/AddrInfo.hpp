@@ -45,7 +45,7 @@ private:
 	AddrInfo();
 
 	void const		*getAddress(void) const;
-	u_int16_t const	getPort(void) const;
+	u_int16_t 		getPort(void) const;
 };
 
 // Debug function

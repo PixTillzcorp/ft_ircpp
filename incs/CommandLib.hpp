@@ -578,6 +578,109 @@ private:
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+class ConnectCommand : public Command {
+public:
+	typedef Command inherited;
+
+	// ____________Canonical Form____________
+	virtual ~ConnectCommand(void);
+	// ConnectCommand(void);
+	ConnectCommand(ConnectCommand const &cpy);
+	ConnectCommand &operator=(ConnectCommand const &cpy);
+
+	// _____________Constructor______________
+	ConnectCommand(inherited const &src);
+	ConnectCommand(std::string const &prefix, inherited::argvec const &args);
+	ConnectCommand(std::string const &prefix, std::string const &target, std::string const &port);
+
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
+	std::string			target(void) const;
+	std::string			port(void) const;
+
+private:
+	ConnectCommand(void);
+};
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class WallopsCommand : public Command {
+public:
+	typedef Command inherited;
+
+	// ____________Canonical Form____________
+	virtual ~WallopsCommand(void);
+	// WallopsCommand(void);
+	WallopsCommand(WallopsCommand const &cpy);
+	WallopsCommand &operator=(WallopsCommand const &cpy);
+
+	// _____________Constructor______________
+	WallopsCommand(inherited const &src);
+	WallopsCommand(std::string const &prefix, std::string const &message);
+	
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
+	std::string			message(void) const;
+
+private:
+	WallopsCommand(void);
+};
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class InviteCommand : public Command {
+public:
+	typedef Command inherited;
+
+	// ____________Canonical Form____________
+	virtual ~InviteCommand(void);
+	// InviteCommand(void);
+	InviteCommand(InviteCommand const &cpy);
+	InviteCommand &operator=(InviteCommand const &cpy);
+
+	// _____________Constructor______________
+	InviteCommand(inherited const &src);
+	InviteCommand(std::string const &prefix, inherited::argvec const &args);
+	InviteCommand(std::string const &prefix, std::string const &nick, std::string const &chan);
+	
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
+	std::string			nick(void) const;
+	std::string			chan(void) const;
+
+private:
+	InviteCommand(void);
+};
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class KickCommand : public Command {
+public:
+	typedef Command inherited;
+
+	// ____________Canonical Form____________
+	virtual ~KickCommand(void);
+	// KickCommand(void);
+	KickCommand(KickCommand const &cpy);
+	KickCommand &operator=(KickCommand const &cpy);
+
+	// _____________Constructor______________
+	KickCommand(inherited const &src);
+	KickCommand(std::string const &prefix, inherited::argvec const &args);
+	KickCommand(std::string const &prefix, std::string const &chan, std::string const &nicks, std::string const &msg);
+	
+	// __________Member functions____________
+	virtual void		isValid(void) const throw(inherited::InvalidCommand);
+	std::string			chan(void) const;
+	std::string			nicks(void) const;
+	std::string			comment(void) const;
+
+private:
+	KickCommand(void);
+};
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 // ########################################
 // 					SERVER
 // ########################################

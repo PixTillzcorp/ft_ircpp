@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockStream.cpp }-------------------------------**
 **----- Created -------------{ 2021-05-07 16:21:55 }--------------------------**
-**----- Updated -------------{ 2022-01-09 16:14:07 }--------------------------**
+**----- Updated -------------{ 2022-01-31 12:23:19 }--------------------------**
 ********************************************************************************
 */
 
@@ -28,9 +28,9 @@ SockStream::~SockStream(void) { return; }
 SockStream::SockStream(void) { return; }
 SockStream::SockStream(SockStream const &src) { *this = src; }
 SockStream	&SockStream::operator=(SockStream const &src) {
-	this->_sock = src.getSock();
-	this->_rmsg = src.getRmsg();
-	this->_wmsg = src.getWmsg();
+	_sock = src.getSock();
+	_rmsg = src.getRmsg();
+	_wmsg = src.getWmsg();
 	return *this;
 }
 
@@ -44,84 +44,92 @@ bool SockStream::read(void) throw(SockStream::FailRecv){
 	int					ret;
 
 	std::memset(tmp_buff, 0, READ_SIZE + 1);
-	if (!(ret = recv(this->_sock, tmp_buff, READ_SIZE, 0)))
+	if (!(ret = recv(_sock, tmp_buff, READ_SIZE, 0)))
 		return false;
 	else if (ret == -1)
 		throw(SockStream::FailRecv());
 	else
 		ss.str(tmp_buff);
-	this->readMessage(ss);
+	readMessage(ss);
 	return true;
 }
 
 void SockStream::write(void) throw(SockStream::FailSend) {
-	if (!this->_wmsg.empty())
-		this->writeMessage(this->_wmsg.front());
+	if (!_wmsg.empty())
+		writeMessage(_wmsg.front());
 }
 
 Message	SockStream::getLastMessage(void) {
 	Message ret;
 
-	if (!this->_rmsg.empty())
+	if (!_rmsg.empty())
 	{
-		if (this->_rmsg.front().received())
+		if (_rmsg.front().received())
 		{
-			ret = Message(this->_rmsg.front());
-			this->_rmsg.pop();
+			ret = Message(_rmsg.front());
+			_rmsg.pop();
 		}
 	}
 	return (ret);
 }
 
 void SockStream::queueMessage(Message msg) {
-	this->_wmsg.push(msg);
+	_wmsg.push(msg);
 }
 
-bool SockStream::hasInputMessage(void) const { return (!this->_rmsg.empty() && this->_rmsg.front().received()); }
-bool SockStream::hasOutputMessage(void) const { return (!this->_wmsg.empty() && this->_wmsg.front().received()); }
+bool SockStream::hasInputMessage(void) const { return (!_rmsg.empty() && _rmsg.front().received()); }
+bool SockStream::hasOutputMessage(void) const { return (!_wmsg.empty() && _wmsg.front().received()); }
 
-void SockStream::clear(void) {
-	while (!this->_wmsg.empty())
-		this->_wmsg.pop();
+void SockStream::clearIn(void) {
+	while (!_rmsg.empty())
+		_rmsg.pop();
+}
+
+void SockStream::clearOut(void) {
+	while (!_wmsg.empty())
+		_wmsg.pop();
 }
 
 // ____________Setter / Getter___________
 // _sock
-int					SockStream::getSock(void) const { return this->_sock; }
-void				SockStream::setSock(int const &src) { this->_sock = src; }
+int					SockStream::getSock(void) const { return _sock; }
+void				SockStream::setSock(int const &src) { _sock = src; }
 
 // _rmsg
-std::queue<Message>	SockStream::getRmsg(void) const { return this->_rmsg; }
-void				SockStream::setRmsg(std::queue<Message> const &src) { this->_rmsg = src; }
+std::queue<Message>	SockStream::getRmsg(void) const { return _rmsg; }
+void				SockStream::setRmsg(std::queue<Message> const &src) { _rmsg = src; }
 
 // _wmsg
-std::queue<Message>	SockStream::getWmsg(void) const { return this->_wmsg; }
-void				SockStream::setWmsg(std::queue<Message> const &src) { this->_wmsg = src; }
+std::queue<Message>	SockStream::getWmsg(void) const { return _wmsg; }
+void				SockStream::setWmsg(std::queue<Message> const &src) { _wmsg = src; }
 
 // ########################################
 // 					PRIVATE
 // ########################################
 
-void SockStream::freshMessage(void) { this->_rmsg.push(Message()); }
+void SockStream::freshMessage(void) { _rmsg.push(Message()); }
 void SockStream::readMessage(std::stringstream &input) {
 	std::string tmp;
 
 	if (input.str().empty())
 		return;
-	if (!input.str().compare("\n") && (this->_rmsg.empty() || this->_rmsg.back().empty()))
+	if (!input.str().compare("\n") && (_rmsg.empty() || _rmsg.back().empty()))
 		return;
 	else {
 		std::getline(input, tmp);
 		if (!input.bad()) {
-			if (this->_rmsg.empty())
-				this->freshMessage(); 									// If it is the first msg, init one
-			this->_rmsg.back().load(tmp); 								// Add to latest msg new data
-			if (!input.eof() || this->_rmsg.back().isFull())			// If EOF not reached (we find a '\n')
+			if (_rmsg.empty())
+				freshMessage(); 									// If it is the first msg, init one
+			_rmsg.back().load(tmp); 								// Add to latest msg new data
+			if (!input.eof() || _rmsg.back().isFull())			// If EOF not reached (we find a '\n')
 			{
-				this->_rmsg.back().received(true);						// Mark message as finished
-				this->_rmsg.back().purify();							// Remove '\r' from Windows line return
-				this->freshMessage();									// Init next one
-				this->readMessage(input);								// Loop until no more data
+				_rmsg.back().received(true);						// Mark message as finished
+				_rmsg.back().purify();							// Remove '\r' from Windows line return
+				if (_rmsg.back().empty())
+					_rmsg.back().received(false);
+				else
+					freshMessage();								// Init next one
+				readMessage(input);								// Loop until no more data
 			}
 		}
 	}
@@ -133,10 +141,10 @@ void SockStream::writeMessage(Message &msg) {
 	if (msg.received())
 	{
 		tmp = msg.unload(READ_SIZE);
-		if (send(this->_sock, tmp.c_str(), tmp.length(), 0) == -1)
+		if (send(_sock, tmp.c_str(), tmp.length(), 0) == -1)
 			throw(SockStream::FailSend());
 		if (msg.isWritten())
-			this->_wmsg.pop();
+			_wmsg.pop();
 	}
 }
 

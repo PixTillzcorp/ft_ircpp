@@ -11,11 +11,11 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Channel.cpp }----------------------------------**
 **----- Created -------------{ 2021-10-11 15:03:32 }--------------------------**
-**----- Updated -------------{ 2022-01-26 02:44:14 }--------------------------**
+**----- Updated -------------{ 2022-02-10 14:23:25 }--------------------------**
 ********************************************************************************
 */
 
-#include "../incs/Channel.hpp"
+#include "Channel.hpp"
 
 // ########################################
 // 					PUBLIC
@@ -26,12 +26,9 @@ Channel::~Channel(void) { return; }
 // Channel::Channel(void) { return; }
 Channel::Channel(Channel const &src) { *this = src; }
 Channel &Channel::operator=(Channel const &src) {
+	_members = src.getMembers();
 	_name = src.getName();
 	_topic = src.getTopic();
-	_creator = src.getCreator();
-	_operators = src.getMembers();
-	_members = src.getOperators();
-	_voices = src.getVoices();
 	_invites = src.getInvites();
 	_bans = src.getBans();
 	_modes = src.getModes();
@@ -39,44 +36,41 @@ Channel &Channel::operator=(Channel const &src) {
 }
 
 // _____________Constructor______________
-Channel::Channel(Client *creator, std::string const &name) :_creator(creator),
-															_name(name),
+Channel::Channel(Client *creator, std::string const &name) :_name(name),
 															_modes(CHAN_DEFAULT_MODES) {
-	creator->addChanToList(getName());
+	_members[creator] = CHAN_USER_CREATOR;
+	creator->addChanToList(_name);
 	creator->send(Command(creator->fullId(), "JOIN", getName()));
 	if (_name[0] == '&')
 		applyLocalChannel(true);
-	return;
 }
 
-Channel::Channel(std::string const &name, Client *creator) :
-_creator(creator), _name(name), _modes(CHAN_DEFAULT_MODES) {
+Channel::Channel(std::string const &name, Client *creator) : _name(name), _modes(CHAN_DEFAULT_MODES) {
+	_members[creator] = CHAN_USER_CREATOR;
 	creator->addChanToList(getName());
 }
 
 // __________Member functions____________
 unsigned short	Channel::join(Client *joiner) {
-	// if (isBanned(joiner->name())) {
-	// 	if (isInviteonly()) {
-	// 		if (!isInvited(joiner->name()))
-	// 			// joiner is banned
-	// 		else
-	// 			revokeInvite(joiner->name());
-	// 	}
-	// }
 	if (!isOnChan(joiner)) {
-		_members.push_back(joiner);
+		if (!joiner->isOperator() && isInviteonly()) {
+			if (!isInvited(joiner->name()))
+				return ERR_INVITEONLYCHAN;
+			else
+				revokeInvite(joiner->name());
+		}
+		_members[joiner] = (joiner->isOperator() ? CHAN_USER_OPERATOR : CHAN_USER_MEMBER);
 		joiner->addChanToList(_name);
 		broadcast(nullptr, JoinCommand(joiner->fullId(), _name));
 	}
 	else
-		return 1; //already on chan
+		return ERR_USERONCHANNEL;
 	return 0;
 }
 
-void			Channel::njoin(Client *joiner) {
+void			Channel::njoin(Client *joiner, char status) {
 	if (!isOnChan(joiner)) {
-		_members.push_back(joiner);
+		_members[joiner] = status;
 		joiner->addChanToList(_name);
 	}
 }
@@ -84,42 +78,44 @@ void			Channel::njoin(Client *joiner) {
 void			Channel::leave(Client *leaver) {
 	if (!leaver)
 		return;
-	leaver->removeChanFromList(getName());
-	if (!leaver->compare(_creator))
+	leaver->removeChanFromList(_name);
+	_members.erase(leaver);
+	if (isCreator(leaver))
 		swapCreator();
-	removeMember(leaver, _operators);
-	removeMember(leaver, _members);
 }
 
-bool			Channel::empty(void) const { return (!_creator); }
+bool			Channel::empty(void) const { return (_members.empty()); }
 bool			Channel::hasTopic(void) { return !(_topic.empty()); }
 void			Channel::namesList(std::list<std::string> &lst) const {
+	Client		*creator;
+
 	lst.clear();
-	lst.push_back("@@" + _creator->nickname);
-	for (Channel::clientlist_cit it = _operators.begin(); it != _operators.end(); it++)
-		lst.push_back("@" + (*it)->nickname);
-	for (Channel::clientlist_cit it = _members.begin(); it != _members.end(); it++) {
-		if ((*it)->isOperator())
-			lst.push_back("@" + (*it)->nickname);
-		else if (isModerated() && canTalk((*it)))
-			lst.push_back("+" + (*it)->nickname);
+	if (!(creator = pickMember(CHAN_USER_CREATOR)))
+		return;
+	lst.push_back("@@" + creator->nickname);
+	for (clientmap_cit it = _members.begin(); it != _members.end(); it++) {
+		if (it->second == CHAN_USER_CREATOR)
+			continue;
+		else if (it->second == CHAN_USER_OPERATOR || it->first->isOperator())
+			lst.push_back("@" + it->first->nickname);
+		else if (it->second == CHAN_USER_VOICE)
+			lst.push_back("+" + it->first->nickname);
 		else
-			lst.push_back((*it)->nickname);
+			lst.push_back(it->first->nickname);
 	}
 }
 
-void			Channel::clientsList(Channel::clientlist &lst) const {
+void			Channel::clientsList(std::list<Client *> &lst) const {
 	lst.clear();
-	lst.push_back(_creator);
-	lst.insert(lst.end(), _operators.begin(), _operators.end());
-	lst.insert(lst.end(), _members.begin(), _members.end());
+	for (clientmap_cit it = _members.begin(); it != _members.end(); it++)
+		lst.push_back(it->first);
 }
 
 void			Channel::send(Client *sender, PrivmsgCommand const &cmd) {
 	if (sender) {
 		if (!isOnChan(sender) && isNoOutMessage())
 			throw (Command::InvalidCommandException(ERR_CANNOTSENDTOCHAN));
-		else if (isModerated() && !canTalk(sender))
+		else if (!canTalk(sender))
 			throw (Command::InvalidCommandException(ERR_CANNOTSENDTOCHAN));
 	}
 	broadcast(sender, cmd);
@@ -137,55 +133,47 @@ void			Channel::updateClients(Client *sender, Command const &cmd) {
 }
 
 bool			Channel::isOnChan(Client *user) const {
-	if (isCreator(user) || isMember(user))
-		return true;
-	else if (std::find(_operators.begin(), _operators.end(), user) != _operators.end())
-		return true;
-	return false;
-}
-
-bool			Channel::isCreator(Client *user) const {
 	if (!user)
 		return false;
-	return (_creator == user);
+	return _members.count(user);
 }
 
-bool			Channel::isOperator(Client *user) const {
+
+void			Channel::addInvite(std::string const &nick) {
+	if (!isInvited(nick))
+		_invites.push_back(nick);
+}
+bool			Channel::isInvited(std::string const &nick) const { return (std::find(_invites.begin(), _invites.end(), nick) != _invites.end()); }
+
+bool			Channel::checkStatus(Client *user, char status) const {
+	if (!isOnChan(user))
+		return false;
+	return _members.find(user)->second == status;
+}
+
+Client			*Channel::pickMember(char status) const {
+	for (clientmap_cit it = _members.begin(); it != _members.end(); it++) {
+		if (it->second == status)
+			return (it->first);
+	}
+	return nullptr;
+}
+
+bool Channel::isCreator(Client *user) const	 { return checkStatus(user, CHAN_USER_CREATOR); }
+bool Channel::isOperator(Client *user) const {
+	if (isCreator(user) || (user && user->isOperator()))
+		return true;
+	return checkStatus(user, CHAN_USER_OPERATOR);
+}
+bool Channel::isVoice(Client *user) const 	 { return checkStatus(user, CHAN_USER_VOICE); }
+bool Channel::isMember(Client *user) const	 { return checkStatus(user, CHAN_USER_MEMBER); }
+bool Channel::canTalk(Client *user) const {
 	if (!user)
 		return false;
-	if (isCreator(user))
+	else if (!isModerated())
 		return true;
-	else if (user->isOperator() || user->isLocalop())
-		return true;
-	else if (std::find(_operators.begin(), _operators.end(), user) != _operators.end())
-		return true;
-	return false;
-}
-
-bool			Channel::isMember(Client *user) const {
-	if (!user)
-		return false;
-	if (std::find(_members.begin(), _members.end(), user) != _members.end())
-		return true;
-	return false;
-}
-
-bool			Channel::canTalk(Client *user) const {
-	if (!isModerated())
-		return true;
-	if (!user)
-		return false;
-	if (isOperator(user))
-		return true;
-	if (std::find(_voices.begin(), _voices.end(), user->fullId()) != _voices.end())
-		return true;
-	return false;
-}
-
-bool			Channel::checkVoice(std::string const &voice) const {
-	if (std::find(_voices.begin(), _voices.end(), voice) != _voices.end())
-		return true;
-	return false;
+	else
+		return isVoice(user);
 }
 
 bool Channel::isAnonymous(void) const		{ return (this->_modes & CHAN_ANONYMOUS); }
@@ -291,9 +279,9 @@ void			Channel::applyUserModeFlag(Client *sender, Client *target, char flag, boo
 	}
 	if (flag == 'v') {
 		if (set)
-			addVoice(target);
+			giveVoice(target);
 		else
-			removeVoice(target);
+			takeVoice(target);
 	}
 }
 
@@ -316,91 +304,75 @@ std::string		Channel::getModesFlags(void) {
 	return ret.str();
 }
 
-unsigned int	Channel::size(void) const { return (1 + _operators.size() + _members.size()); }
+unsigned int	Channel::size(void) const { return _members.size(); }
 
 // ########################################
 // 				   PRIVATE
 // ########################################
 
-void				Channel::broadcast(Client *sender, Command const &cmd) {
-	if (!sender || sender->compare(_creator))
-		_creator->send(cmd);
-	for (Channel::clientlist_it it = _operators.begin(); it != _operators.end(); it++) {
-		if (!sender || sender->compare(*it))
-			(*it)->send(cmd);
-	}
-	for (Channel::clientlist_it it = _members.begin(); it != _members.end(); it++) {
-		if (!sender || sender->compare(*it))
-			(*it)->send(cmd);
+void			Channel::broadcast(Client *sender, Command const &cmd) {
+	for (clientmap_it it = _members.begin(); it != _members.end(); it++) {
+		if (!sender || sender->compare(it->first))
+			it->first->send(cmd);
 	}
 }
 
-void				Channel::swapCreator(void) {
-	if (!_operators.empty()) {
-		_creator = _operators.front();
-		_operators.pop_front();
-	}
-	else if (!_members.empty()){
-		_creator = _members.front();
-		_members.pop_front();
-	}
-	else
-		_creator = nullptr;
+void			Channel::swapCreator(void) {
+	Client			*tmp;
+
+	if ((tmp = pickMember(CHAN_USER_OPERATOR)))
+		_members[tmp] = CHAN_USER_CREATOR;
+	else if ((tmp = pickMember(CHAN_USER_VOICE)))
+		_members[tmp] = CHAN_USER_CREATOR;
+	else if ((tmp = pickMember(CHAN_USER_MEMBER)))
+		_members[tmp] = CHAN_USER_CREATOR;
+	delete this;
 }
 
-void				Channel::addVoice(Client *user) {
-	if (!user || canTalk(user))
+void			Channel::giveVoice(Client *user) {
+	if (!user || !isOnChan(user))
 		return;
-	_voices.push_back(user->fullId());
+	if (!isCreator(user) && !isOperator(user))
+		_members.find(user)->second = CHAN_USER_VOICE;
 }
 
-void				Channel::removeVoice(Client *user) {
-	std::list<std::string>::iterator it;
-
-	if (!user || !canTalk(user))
+void			Channel::takeVoice(Client *user) {
+	if (!user || !isOnChan(user))
 		return;
-	if ((it = std::find(_voices.begin(), _voices.end(), user->fullId())) != _voices.end())
-		_voices.erase(it);
+	if (!isCreator(user) && !isOperator(user))
+		_members.find(user)->second = CHAN_USER_MEMBER;
 }
 
-void				Channel::promote(Client *user) {
-	if (!user || isOperator(user))
+void			Channel::promote(Client *user) {
+	if (!user || !isOnChan(user))
 		return;
-	removeMember(user, _members);
-	_operators.push_back(user);
+	if (!isCreator(user))
+		_members.find(user)->second = CHAN_USER_OPERATOR;
 }
 
-void				Channel::demote(Client *user) {
-	if (!user || isCreator(user) || isMember(user))
+void			Channel::demote(Client *user) {
+	if (!user || !isOnChan(user))
 		return;
-	removeMember(user, _operators);
-	_members.push_back(user);
+	if (!isCreator(user))
+		_members.find(user)->second = CHAN_USER_MEMBER;
 }
 
-void				Channel::removeMember(Client *leaver, Channel::clientlist &type) {
-	Channel::clientlist_it it;
+std::string		Channel::getModeString(char flag, bool set) const { return std::string((set ? "+" : "-") + std::string(1, flag)); }
 
-	if ((it = std::find(type.begin(), type.end(), leaver)) != type.end())
-		type.erase(it);
-}
-
-std::string			Channel::getModeString(char flag, bool set) const { return std::string((set ? "+" : "-") + std::string(1, flag)); }
-
-void				Channel::applyMode(unsigned short mode, bool set) {
+void			Channel::applyMode(unsigned short mode, bool set) {
 	if (!set)
 		_modes ^= ((_modes ^ mode) > _modes ? CHAN_NOMODE : mode);
 	else
 		_modes |= mode;
 }
 
-// bool				Channel::isBanned(std::string const &name) { return (std::find(_bans.begin(), _bans.end(), joiner->name()) != _bans.end()); }
-// bool				Channel::isInvited(std::string const &name) { return (std::find(_invites.begin(), _invites.end(), joiner->name()) != _invites.end()); }
-// void				Channel::revokeInvite(std::string const &name) { _invites.erase(std::find(_invites.begin(), _invites.end(), joiner->name())); } //im not sure
+// bool			Channel::isBanned(std::string const &name) { return (std::find(_bans.begin(), _bans.end(), joiner->name()) != _bans.end()); }
+void			Channel::revokeInvite(std::string const &nick) { _invites.erase(std::find(_invites.begin(), _invites.end(), nick)); }
 
 std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
-	std::list<std::string> names;
+	std::list<Client *> names;
 
-	src.namesList(names);
+	src.clientsList(names);
 	flux << src.getName() << std::endl;
 	flux << "MODES [";
 	flux << (src.isAnonymous() ? '1' : '0');
@@ -416,11 +388,14 @@ std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
 	flux << (src.isUserLimit() ? '1' : '0');
 	flux << (src.isLocalChannel() ? '1' : '0');
 	flux << ']' << std::endl;
-	flux << "Creator: " << *(src.getCreator()) << std::endl;
+	flux << "Creator: " << *(src.pickMember(CHAN_USER_CREATOR)) << std::endl;
 	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);
 	if (!names.empty()) {
-		for (std::list<std::string>::const_iterator it = names.begin(); it != names.end(); it++)
-			flux << "~~~> \t" << (*it) << (src.checkVoice(*it) ? " [v]" : "") << std::endl;
+		for (std::list<Client *>::const_iterator it = names.begin(); it != names.end(); it++) {
+			flux << "~~> " << ((*it)->isAway() ? "zZz\t" : "\t");
+			flux << (src.isCreator(*it) ? '!' : (src.isOperator(*it) ? '@' : (src.isVoice(*it) ? '+' : ' ')));
+			flux << (*it)->name() << std::endl;
+		}
 	}
 	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);
 	return flux;

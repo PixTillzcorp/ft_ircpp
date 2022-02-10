@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2022-01-28 19:44:09 }--------------------------**
+**----- Updated -------------{ 2022-02-10 18:17:46 }--------------------------**
 ********************************************************************************
 */
 
@@ -59,6 +59,8 @@ void	SelectModule::call(std::list<Connection *> &conxs, bool purge) {
 		_rfds.setFds(_mfds.getFds());
 	_wfds.zeroFd();
 	for (it = conxs.begin(); it != conxs.end(); it++) {
+		if ((*it)->isServer())
+			static_cast<Server *>(*it)->endDeadLinks();
 		if ((*it)->isFinished()) {
 			if (!(*it)->isLink())
 				_rfds.removeFd((*it)->sock());

@@ -50,7 +50,8 @@ public:
 	int		sock(void) const;
 	bool	hasOutputMessage(void) const;
 	bool	hasInputMessage(void) const;
-	void	clearMessages(void);
+	void	clearInputMessages(void);
+	void	clearOutputMessages(void);
 	void	send(Message const &msg);
 	void	send(Command const &cmd);
 	Message getLastMessage(void);

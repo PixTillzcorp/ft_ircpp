@@ -9,9 +9,11 @@
 #define CHAR_DIGIT 		"0123456789"
 #define CHAR_ALPHA_LOW	"abcdefghijklmnopqrstuvwxyz"
 #define CHAR_ALPHA_UP	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#define CHAR_ALPHANUM	"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 #define CHAR_FORBIDDEN	"\x00\x0a\x0d\x20\x3A"
 #define CHAR_NICKNAME	"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-"
 #define CHAR_PREFIX		"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ[]\\`_^{|}-!@."
+#define EMPTY_STRING	""
 
 #define UTILS_MAX_LEN_NICK 9
 #define UTILS_MAX_LEN_USER 15
@@ -38,7 +40,8 @@ namespace Utils {
 	
 	std::string		nbrToStr(unsigned int nbr) throw(Utils::FailStream);
 	unsigned int	strToNbr(std::string const &str) throw(Utils::FailStream);
-	std::string		incToken(std::string const &token) throw(Utils::FailStream);
+	void			initTokenSeed(unsigned int seed);
+	std::string		genToken(size_t len);
 	std::string		getToken(std::string &src, std::string const del);
 	bool			splitAuthInfo(std::string const &infos, std::string &host, std::string &port, std::string &pass);
 	bool			checkNbr(std::string const &nbr);

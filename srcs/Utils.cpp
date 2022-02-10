@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Utils.cpp }------------------------------------**
 **----- Created -------------{ 2021-12-14 19:24:06 }--------------------------**
-**----- Updated -------------{ 2022-01-28 18:58:08 }--------------------------**
+**----- Updated -------------{ 2022-02-02 23:34:16 }--------------------------**
 ********************************************************************************
 */
 
@@ -47,8 +47,21 @@ unsigned int Utils::strToNbr(std::string const &str) throw(Utils::FailStream) {
 	return static_cast<unsigned int>(nbr);
 }
 
-std::string Utils::incToken(std::string const &token) throw(Utils::FailStream) {
-	return nbrToStr(strToNbr(token) + 1);
+void		Utils::initTokenSeed(unsigned int seed) { std::srand(seed); }
+
+std::string	Utils::genToken(size_t len) {
+	std::string const pool(CHAR_ALPHANUM);
+	std::string ret;
+
+	if (len > 32)
+		len = 32;
+	try { ret.reserve(len); }
+	catch (std::exception &ex) { return "none"; }
+
+	for (size_t i = 0; i < len; i++)
+		ret += pool[std::rand() % (pool.size() - 1)];
+
+	return ret;
 }
 
 std::string	Utils::getToken(std::string &src, std::string const del) {
@@ -170,7 +183,7 @@ void	Utils::clearSpaces(std::string &str, bool all) {
 		return;
 	while(!str.empty() && str[0] == ' ')
 		str.erase(0, 1);
-	for (int i = 0; i < str.length(); i++) {
+	for (unsigned int i = 0; i < str.length(); i++) {
 		if (str[i] == ' ') {
 			while (i + 1 < str.length() && str[i + 1] == ' ')
 				str.erase(i, 1);

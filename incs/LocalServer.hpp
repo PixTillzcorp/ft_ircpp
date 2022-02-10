@@ -5,7 +5,6 @@
 #include "SelectModule.hpp"
 #include "CommandLib.hpp"
 #include "Channel.hpp"
-#include "Client.hpp"
 #include "Server.hpp"
 #include "LogFile.hpp"
 
@@ -13,26 +12,21 @@
 #include <fstream>
 
 #define LOCALSERV_WHITELIST_FILE	"whitelist.config"
+#define NO_TOKEN ""
 
 #define MAX_RPL_ENTITY		5
 
-#define ALLNAME				255
-#define NICKNAME			1
-#define USERNAME			2
-#define REALNAME			4
-#define CLIENTNAME			7
+#define NICKNAME 'n'
+#define USERNAME 'u'
+#define REALNAME 'r'
 
 class LocalServer : public Server {
 public: // #####################################################################
 	typedef Server									inherited;
-	typedef std::map<std::string, Connection *> 	namesmap;
-	typedef std::list<Connection *>					conxlist;
-	typedef std::list<Connection *>::iterator		conxlist_it;
-	typedef std::list<Connection *>::const_iterator	conxlist_cit;
 	typedef std::list<Channel *>					chanlist;
 	typedef std::list<Channel *>::iterator			chanlist_it;
 	typedef std::list<Channel *>::const_iterator	chanlist_cit;
-
+	typedef bool(Client::*clicheck)(void) const;
 
 	// ____________Canonical Form____________
 	virtual ~LocalServer();
@@ -46,28 +40,9 @@ public: // #####################################################################
 	// __________Member functions____________
 	bool		run(void);
 	
-	void		joinNet(std::string const &authinfo);
+	bool		joinNet(std::string const &authinfo);
 
 	// ____________Setter / Getter___________
-	// _nicknames
-	std::map<std::string, Connection *> const	&getNicknames(void) const { return this->_nicknames; }
-	void										setNicknames(std::map<std::string, Connection *> &src) { this->_nicknames = src; }
-
-	// _usernames
-	std::map<std::string, Connection *> const	&getUsernames(void) const { return this->_usernames; }
-	void										setUsernames(std::map<std::string, Connection *> &src) { this->_usernames = src; }
-
-	// _realnames
-	std::map<std::string, Connection *> const	&getRealnames(void) const { return this->_realnames; }
-	void										setRealnames(std::map<std::string, Connection *> &src) { this->_realnames = src; }
-
-	// _servnames
-	std::map<std::string, Connection *> const	&getServnames(void) const { return this->_servnames; }
-	void										setServnames(std::map<std::string, Connection *> &src) { this->_servnames = src; }
-
-	// _conxs
-	std::list<Connection *> const				&getConxs(void) const { return this->_conxs; }
-	void										setConxs(std::list<Connection *> &src) { this->_conxs = src; }
 
 	// _chans
 	std::list<Channel *> const					&getChans(void) const { return this->_chans; }
@@ -96,11 +71,6 @@ public: // #####################################################################
 
 private: // ####################################################################
 
-	std::map<std::string, Connection *>	_nicknames;
-	std::map<std::string, Connection *>	_usernames;
-	std::map<std::string, Connection *>	_realnames;
-	std::map<std::string, Connection *>	_servnames;
-	std::list<Connection *>				_conxs;
 	std::list<Channel *>				_chans;
 	SelectModule						_sm;
 	std::string							_password;
@@ -108,15 +78,14 @@ private: // ####################################################################
 	LogFile								_logfile;
 	ConfigParser						_whitelist;
 
-
 	// ___________Connection utils___________
 	void		newConx(void);
-	void		finishConx(Connection *target, bool clear);
-	void		finishConx(Server *sender, Server *target, bool clear, SquitCommand const &cmd);
-	void		finishConx(Server *sender, Client *target, bool clear, std::string const &quitmsg);
+	void		finishConx(Server *sender, Client *target, std::string const &quitmsg);
+	void		finishConx(Server *sender, Server *target, std::string const &quitmsg);
+	void		finishConx(Connection *target);
 	void		breakLinks(Server *origin);
-	Client		*findClient(std::string const &name, unsigned char type);
-	Server		*findServer(std::string const &name);
+	void		breakLinkTokens(Server *origin);
+	void		setNewLocalop(void);
 
 	Channel		*newChan(Client *&sender, std::string const &name);
 	void		finishChan(Channel *target);
@@ -125,35 +94,33 @@ private: // ####################################################################
 	Server		*newLink(Server *sender, ServerCommand const &cmd);
 	Client		*newLink(Server *sender, NickCommand const &cmd);
 
-	void		mapName(namesmap &names, std::string const &name, Connection *conx);
-	bool		mapHasName(namesmap &names, std::string const &name);
-	void		unmapName(namesmap &names, std::string const &name);
-
-	bool		isWhitelisted(std::string const &info, bool servername) const;
-	bool		checkWhitelistHost(std::string const &servername, std::string const &host) const;
-	std::string const	whitelistPassword(std::string const &servername) const;
+	bool		isWhitelisted(std::string const &info, bool svrname) const;
+	bool		checkWhitelistHost(std::string const &svrname, std::string const &host) const;
+	bool		checkWhitelistInfos(std::string const &svrname, std::string const &port) const;
+	std::string const	whitelistInfos(std::string const &svrname) const;
+	std::string const	whitelistHost(std::string const &svrname) const;
+	std::string const	whitelistPort(std::string const &svrname) const;
+	std::string const	whitelistPassword(std::string const &svrname) const;
 
 	void		purge(void);
+	virtual void newToken(void);
+	bool		isUniqueToken(std::string const &cmp) const;
+
 	// ______________Broadcast_______________
 	void	broadcastToServers(Server *sender, Command const &cmd);
 	void	broadcastToClients(Client *sender, Command const &cmd);
+	void	broadcastToSomeClients(Command const &cmd, clicheck fp);
+
+	void	warnAllOperators(std::string const &msg);
 
 	void	broadcastServer(Server *sender, Server *shared);
-	void	broadcastClient(Server *sender, Client *shared);
+	void	broadcastClient(Server *sender, Client *shared); // std::string const &tk
 
 	void	shareServs(Server *target);
-	void	shareConxs(Server *target);
+	void	shareClients(Server *target);
 	void	shareChans(Server *target);
 
 	// ___________Connection count___________
-	unsigned int		howMany(char flag) const;
-	unsigned int		howMany(unsigned short check, bool direct) const;
-
-	std::string const	howManyClient(bool direct) const;
-	std::string const	howManyServer(bool direct, bool self) const;
-	std::string const 	howManyService(bool direct) const;
-	std::string const	howManyUnknown(void) const;
-	std::string const	howManyOperator(void) const;
 	std::string const	howManyChannel(void) const;
 
 	// ____________Select module_____________
@@ -190,6 +157,8 @@ private: // ####################################################################
 	void		execNotice(Server *sender, NoticeCommand const &cmd);
 	void		execQuit(Server *sender, QuitCommand const &cmd);
 	void		execSquit(Server *sender, SquitCommand const &cmd);
+	void		execInvite(Server *sender, InviteCommand const &cmd);
+	void		execKick(Server *sender, KickCommand const &cmd);
 
 	// client
 	void		execNick(Client *sender, NickCommand const &cmd);
@@ -212,6 +181,10 @@ private: // ####################################################################
 	void		execNames(Client *sender, NamesCommand const &cmd);
 	void		execList(Client *sender, ListCommand const &cmd);
 	void		execWho(Client *sender, WhoCommand const &cmd);
+	void		execSquit(Client *sender, SquitCommand const &cmd);
+	void		execConnect(Client *sender, ConnectCommand const &cmd);
+	void		execInvite(Client *sender, InviteCommand const &cmd);
+	void		execKick(Client *sender, KickCommand const &cmd);
 
 	// ___________Numeric replies____________
 	void		numericReply(Connection *sender, unsigned short code);
@@ -233,11 +206,11 @@ private: // ####################################################################
 	void		logError(Connection *target, std::string const &msg);
 	void		logError(Connection *target, std::string const &msg, std::string const &errmsg);
 	void		logPromote(std::string const &rank, std::string const &reason, bool success);
+	void		logMode(std::string const &type, std::string const &name, std::string const &modes);
 	void		logSuccess(std::string const &msg);
 
 	// ____________Debug Display_____________
 	void		showLocalServer(void) const;
-	void		showNames(std::map<std::string, Connection *> names) const;
 	void		showChans(void) const;
 	void		showNet(void) const;
 };

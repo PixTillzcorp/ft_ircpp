@@ -6,6 +6,8 @@
 #include <string>
 #include <cctype>
 
+#include "Utils.hpp"
+
 #define MMAX_LEN 512
 
 class Message {

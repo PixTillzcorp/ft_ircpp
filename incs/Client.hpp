@@ -52,6 +52,9 @@ public: // #####################################################################
 	bool				compare(Connection *cmp) const;
 	bool				compare(Client &cmp) const;
 	bool				compare(Client *cmp) const;
+	bool				checkNickname(std::string const &cmp) const;
+	bool				checkUsername(std::string const &cmp) const;
+	bool				checkRealname(std::string const &cmp) const;
 
 	bool				validNames(void) const;
 

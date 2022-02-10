@@ -32,7 +32,8 @@ public: // #####################################################################
 	bool hasInputMessage(void) const;
 	bool hasOutputMessage(void) const;
 
-	void clear(void);
+	void clearIn(void);
+	void clearOut(void);
 
 	// ____________Setter / Getter___________
 	// _sock

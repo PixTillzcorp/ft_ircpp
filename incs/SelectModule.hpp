@@ -1,8 +1,8 @@
 #ifndef FT_IRCPP_SELECT_MODULE_HPP
 #define FT_IRCPP_SELECT_MODULE_HPP
 
-#include "../incs/Connection.hpp"
-#include "../incs/FdSet.hpp"
+#include "Server.hpp"
+#include "FdSet.hpp"
 #include <list>
 #include <unistd.h>
 #include <fcntl.h>

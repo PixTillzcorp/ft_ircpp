@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Message.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-11 16:27:23 }--------------------------**
-**----- Updated -------------{ 2022-01-08 05:05:43 }--------------------------**
+**----- Updated -------------{ 2022-02-03 21:17:58 }--------------------------**
 ********************************************************************************
 */
 
@@ -75,6 +75,7 @@ bool			Message::empty(void) const { return content.empty(); }
 void			Message::purify(void) {
 	if (received()) {
 		content.erase(std::remove(content.begin(), content.end(), '\r'), content.end());
+		Utils::clearSpaces(content, false);
 	}
 }
 bool			Message::isFull(void) const { return (content.size() >= MMAX_LEN); }
