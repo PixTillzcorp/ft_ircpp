@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ CommandLib.cpp }-------------------------------**
 **----- Created -------------{ 2021-06-14 11:07:57 }--------------------------**
-**----- Updated -------------{ 2022-02-10 14:05:59 }--------------------------**
+**----- Updated -------------{ 2022-02-15 22:10:11 }--------------------------**
 ********************************************************************************
 */
 
@@ -116,7 +116,14 @@ void		NickCommand::isValid(void) const throw(inherited::InvalidCommand) {
 std::string		NickCommand::nickname(void) const { return (argX(0)); }
 std::string		NickCommand::hopcount(void) const { return (argX(1)); }
 std::string		NickCommand::username(void) const { return (argX(2)); }
-std::string		NickCommand::host(void) const { return (argX(3)); }
+std::string		NickCommand::host(void) const {
+	std::string tmp;
+
+	tmp = argX(3);
+	if (!tmp.rfind("0:", 0))
+		return (tmp.substr(1));
+	return (tmp);
+}
 std::string		NickCommand::servertoken(void) const { return (argX(4)); }
 std::string		NickCommand::umode(void) const { return (argX(5)); }
 std::string		NickCommand::realname(void) const { return (argX(6)); }

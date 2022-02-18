@@ -22,7 +22,7 @@
 
 namespace Utils {
 
-	typedef class FailStreamException : public std::exception { // socket setup failed
+	typedef class FailStreamException : public std::exception { // stream fail
 	public:
 		typedef std::exception inherited;
 
@@ -53,6 +53,8 @@ namespace Utils {
 	bool			validRealName(std::string const &name);
 	bool			validServName(std::string const &name);
 	void			clearSpaces(std::string &str, bool all);
+	void			graphicalOnly(std::string &str);
+	bool			isNotGraph(int c);
 }
 
 #endif //UTILS_HPP

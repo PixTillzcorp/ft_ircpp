@@ -158,7 +158,7 @@ SRCO_SVR = 	Message.o Utils.o FdSet.o AddrInfo.o SockInfo.o SockStream.o	\
 
 CXX = g++
 
-CXXFLAGS = -std=c++98 -pedantic-errors -I$(INCDIR)
+CXXFLAGS = -std=c++98 -pedantic-errors -I$(INCDIR) -Wall -Wextra -Werror
 
 ifeq ($(MAKEFILE_MODE), DEBUG)
 	CXXFLAGS += -g

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2022-02-10 18:17:46 }--------------------------**
+**----- Updated -------------{ 2022-02-18 21:36:49 }--------------------------**
 ********************************************************************************
 */
 
@@ -34,30 +34,25 @@ SelectModule &SelectModule::operator=(SelectModule const &src) {
 }
 
 // ____________Constructors______________
-SelectModule::SelectModule(int sock, bool std) {
+SelectModule::SelectModule(int sock, bool stdin) {
 	if (sock && sock >= 0)
-	{
-		_mfds.addFd(sock);
-		fcntl(sock, F_SETFL, O_NONBLOCK);
-		_ufd = sock + 1;
-	}
-	if (std)
-	{
-		_mfds.addFd(STDIN_FILENO);
-		fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
-		_ufd = (!sock ? STDIN_FILENO : sock) + 1;
-	}
+		addFd(sock);
+	if (stdin)
+		addFd(STDIN_FILENO);
 }
 
 // __________Member functions____________
 
-void	SelectModule::call(std::list<Connection *> &conxs, bool purge) {
+void	SelectModule::call(std::list<Connection *> &conxs, std::string &stdout, bool purge) {
 	std::list<Connection *>::iterator it;
 
 	_rfds.zeroFd();
-	if (!purge)
-		_rfds.setFds(_mfds.getFds());
 	_wfds.zeroFd();
+	if (!purge) {
+		_rfds.setFds(_mfds.getFds());
+		if (!stdout.empty())
+			_wfds.addFd(STDOUT_FILENO);
+	}
 	for (it = conxs.begin(); it != conxs.end(); it++) {
 		if ((*it)->isServer())
 			static_cast<Server *>(*it)->endDeadLinks();
@@ -79,12 +74,14 @@ void	SelectModule::call(std::list<Connection *> &conxs, bool purge) {
 		return;
 	if (select(_ufd, _rfds.getPtr(), _wfds.getPtr(), nullptr, nullptr) == -1)
 		throw(SelectModule::SelectException());
+	if (checkStdout())
+		std::cout << stdout;
 }
 
 void	SelectModule::addFd(int sock) {
 	if (sock < 0)
 		return;
-	if (sock >= _ufd)
+	if (static_cast<unsigned int>(sock) >= _ufd)
 		_ufd = sock + 1;
 	_mfds.addFd(sock);
 	fcntl(sock, F_SETFL, O_NONBLOCK);
@@ -94,7 +91,8 @@ void	SelectModule::addFd(int sock) {
 void	SelectModule::removeFd(int sock) { _mfds.removeFd(sock); }
 bool	SelectModule::checkRfds(int sock) const { return _rfds.checkFd(sock); }
 bool	SelectModule::checkWfds(int sock) const { return _wfds.checkFd(sock); }
-bool	SelectModule::checkStd(void) const { return _rfds.checkFd(STDIN_FILENO); }
+bool	SelectModule::checkStdin(void) const { return _rfds.checkFd(STDIN_FILENO); }
+bool	SelectModule::checkStdout(void) const { return _wfds.checkFd(STDOUT_FILENO); }
 
 // ____________Setter / Getter___________
 // _mfds

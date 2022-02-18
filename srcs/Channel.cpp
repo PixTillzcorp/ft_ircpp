@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Channel.cpp }----------------------------------**
 **----- Created -------------{ 2021-10-11 15:03:32 }--------------------------**
-**----- Updated -------------{ 2022-02-10 14:23:25 }--------------------------**
+**----- Updated -------------{ 2022-02-15 18:57:05 }--------------------------**
 ********************************************************************************
 */
 
@@ -389,7 +389,7 @@ std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
 	flux << (src.isLocalChannel() ? '1' : '0');
 	flux << ']' << std::endl;
 	flux << "Creator: " << *(src.pickMember(CHAN_USER_CREATOR)) << std::endl;
-	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);
+	flux << std::string(35, '>') << std::endl;
 	if (!names.empty()) {
 		for (std::list<Client *>::const_iterator it = names.begin(); it != names.end(); it++) {
 			flux << "~~> " << ((*it)->isAway() ? "zZz\t" : "\t");
@@ -397,6 +397,6 @@ std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
 			flux << (*it)->name() << std::endl;
 		}
 	}
-	DEBUG_BAR_DISPC(COUT, '>', 35, DARK_GREY);
+	flux << std::string(35, '>') << std::endl;
 	return flux;
 }

@@ -17,15 +17,16 @@ public: // #####################################################################
 	SelectModule &operator=(SelectModule const &src);
 
 	// ____________Constructors______________
-	SelectModule(int sock, bool std);
+	SelectModule(int sock, bool stdin);
 
 	// __________Member functions____________
-	void	call(std::list<Connection *> &conxs, bool purge);
+	void	call(std::list<Connection *> &conxs, std::string &stdout, bool purge);
 	void	addFd(int sock);
 	void	removeFd(int sock);
 	bool	checkRfds(int sock) const;
 	bool	checkWfds(int sock) const;
-	bool	checkStd(void) const;
+	bool	checkStdin(void) const;
+	bool	checkStdout(void) const;
 
 	// ____________Setter / Getter___________
 	// _mfds

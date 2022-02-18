@@ -7,18 +7,22 @@
 #include "Channel.hpp"
 #include "Server.hpp"
 #include "LogFile.hpp"
+#include "Debug.hpp"
 
 #include <map>
 #include <fstream>
 
 #define LOCALSERV_WHITELIST_FILE	"whitelist.config"
-#define NO_TOKEN ""
+#define NO_TOKEN					""
 
-#define MAX_RPL_ENTITY		5
+#define MAX_CONXS					15
+#define MAX_IOSTEP_LENGTH			64
 
-#define NICKNAME 'n'
-#define USERNAME 'u'
-#define REALNAME 'r'
+#define MAX_RPL_ENTITY				5
+
+#define NICKNAME					'n'
+#define USERNAME					'u'
+#define REALNAME					'r'
 
 class LocalServer : public Server {
 public: // #####################################################################
@@ -55,7 +59,7 @@ public: // #####################################################################
 	// _password
 	std::string const							&getPassword(void) const { return this->_password; }
 
-	// _password
+	// _oppass
 	std::string const							&getOppass(void) const { return this->_oppass; }
 	void										setOppass(std::string const &src) { this->_oppass = src; }
 
@@ -75,13 +79,15 @@ private: // ####################################################################
 	SelectModule						_sm;
 	std::string							_password;
 	std::string							_oppass;
+	std::string							_stdin;
+	std::stringstream					_stdout;
 	LogFile								_logfile;
 	ConfigParser						_whitelist;
 
 	// ___________Connection utils___________
 	void		newConx(void);
 	void		finishConx(Server *sender, Client *target, std::string const &quitmsg);
-	void		finishConx(Server *sender, Server *target, std::string const &quitmsg);
+	void		finishConx(Server *sender, Server *target, std::string const &quitmsg, bool netsplit);
 	void		finishConx(Connection *target);
 	void		breakLinks(Server *origin);
 	void		breakLinkTokens(Server *origin);
@@ -125,6 +131,8 @@ private: // ####################################################################
 
 	// ____________Select module_____________
 	void		selectCall(void);
+
+	void		outputStringFragment(std::istream &is, std::string &dest);
 
 	bool		isReadable(Connection *conx) const;
 	bool		isWritable(Connection *conx) const;
@@ -210,9 +218,8 @@ private: // ####################################################################
 	void		logSuccess(std::string const &msg);
 
 	// ____________Debug Display_____________
-	void		showLocalServer(void) const;
-	void		showChans(void) const;
-	void		showNet(void) const;
+	void		showChans(void);
+	void		showNet(void);
 };
 
 #endif //FT_IRC_LOCAL_SERVER_HPP

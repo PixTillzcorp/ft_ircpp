@@ -2,6 +2,7 @@
 #define FT_IRCPP_SOCKINFO_HPP
 
 #include "AddrInfo.hpp"
+#include "Utils.hpp"
 #include <exception>
 #include <list>
 #include <sstream>

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ main.cpp }-------------------------------------**
 **----- Created -------------{ 2021-09-22 18:21:01 }--------------------------**
-**----- Updated -------------{ 2022-02-08 02:43:43 }--------------------------**
+**----- Updated -------------{ 2022-02-18 20:30:22 }--------------------------**
 ********************************************************************************
 */
 
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[])
 		exit(EXIT_FAILURE);
 	}
 	try {
-		ls = new LocalServer(port, AF_INET, password);
+		ls = new LocalServer(port, AF_UNSPEC, password);
 	} catch (Connection::ConxInit &ex) {
 		std::cerr << ex.what() << std::endl;
 		return (EXIT_FAILURE);
@@ -70,9 +70,6 @@ int main(int argc, char const *argv[])
 		std::cerr << "Internal error." << std::endl;
 		return (EXIT_FAILURE);
 	}
-
-	if (!authinfo.empty())
-		std::cout << "Attempting to connect... \t" << (ls->joinNet(authinfo) ? "OK" : "KO") << std::endl;
 
 	ls->run();
 

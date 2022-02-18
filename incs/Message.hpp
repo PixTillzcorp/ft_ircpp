@@ -1,12 +1,11 @@
 #ifndef FT_IRC_MESSAGE_HPP
 #define FT_IRC_MESSAGE_HPP
 
+#include "Utils.hpp"
 #include <algorithm>
 #include <iostream>
 #include <string>
 #include <cctype>
-
-#include "Utils.hpp"
 
 #define MMAX_LEN 512
 

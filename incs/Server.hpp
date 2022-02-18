@@ -37,7 +37,7 @@ public:
     Server(std::string const &host, std::string const &port, u_int16_t family);
 
 	// __________Member functions____________
-	virtual std::string const &name(void) const;
+	virtual std::string const name(void) const;
 	Command::argvec const serverArgsShare(std::string const &servertoken) const;
 	Command::argvec const serverArgsConnect(void) const;
 	Command::argvec const serverArgsAccept(void) const;

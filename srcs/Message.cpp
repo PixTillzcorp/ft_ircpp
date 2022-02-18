@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Message.cpp }----------------------------------**
 **----- Created -------------{ 2021-05-11 16:27:23 }--------------------------**
-**----- Updated -------------{ 2022-02-03 21:17:58 }--------------------------**
+**----- Updated -------------{ 2022-02-18 20:47:30 }--------------------------**
 ********************************************************************************
 */
 
@@ -44,7 +44,7 @@ bool			Message::isWritten(void) { return (_received && content.empty()); }
 size_t			Message::load(std::string &src) {
 	if (!src.empty() && !_received && !isFull())
 	{
-		src.erase(std::remove_if(src.begin(), src.end(), isNotGraph), src.end());
+		Utils::graphicalOnly(src);
 		if (content.size() + src.size() >= MMAX_LEN)
 			content.append(src.substr(0, MMAX_LEN - content.size()));
 		else
@@ -60,15 +60,14 @@ std::string		Message::unload(size_t const n) {
 	{
 		tmp = content.substr(0, n);
 		content.erase(0, n);
-		if (isWritten() && tmp.compare("\n")) {
-			if (tmp.size() < n)
-				tmp.append("\n");
+		if (isWritten() && tmp.compare("\r\n")) {
+			if (tmp.size() + 1 < n)
+				tmp.append("\r\n");
 			else
-				content.append("\n");
+				content.append("\r\n");
 		}
-		return (tmp);
 	}
-	return ("");
+	return (tmp);
 }
 bool			Message::compare(std::string const &sample) const { return content.compare(sample); }
 bool			Message::empty(void) const { return content.empty(); }
@@ -83,12 +82,6 @@ bool			Message::isFull(void) const { return (content.size() >= MMAX_LEN); }
 // ____________Setter / Getter___________
 bool			Message::received(void) const { return _received; }
 void			Message::received(bool set) { _received = set; }
-
-// ########################################
-// 				   PRIVATE
-// ########################################
-
-bool			Message::isNotGraph(int c) { return (c == 32 ? false : !isgraph(c)); }
 
 // ########################################
 // 					DEBUG

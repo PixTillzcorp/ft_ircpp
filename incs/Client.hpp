@@ -2,7 +2,6 @@
 #define FT_IRCPP_CLIENT_HPP
 
 #include "Connection.hpp"
-#include "Utils.hpp"
 
 #define CLIENT_MODE_FLAGS "aiwroO"
 
@@ -46,7 +45,7 @@ public: // #####################################################################
 	Client(Connection *link, size_t hop);
 
 	// __________Member functions____________
-	virtual std::string const &name(void) const;
+	virtual std::string const name(void) const;
 	std::string const	fullId(void) const;
 	Command::argvec		nickArgs(std::string const &servertoken) const;
 	bool				compare(Connection *cmp) const;

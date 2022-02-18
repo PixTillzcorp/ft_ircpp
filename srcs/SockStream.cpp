@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockStream.cpp }-------------------------------**
 **----- Created -------------{ 2021-05-07 16:21:55 }--------------------------**
-**----- Updated -------------{ 2022-01-31 12:23:19 }--------------------------**
+**----- Updated -------------{ 2022-02-17 03:28:08 }--------------------------**
 ********************************************************************************
 */
 
@@ -141,7 +141,7 @@ void SockStream::writeMessage(Message &msg) {
 	if (msg.received())
 	{
 		tmp = msg.unload(READ_SIZE);
-		if (send(_sock, tmp.c_str(), tmp.length(), 0) == -1)
+		if (send(_sock, tmp.c_str(), tmp.length(), MSG_NOSIGNAL) == -1)
 			throw(SockStream::FailSend());
 		if (msg.isWritten())
 			_wmsg.pop();

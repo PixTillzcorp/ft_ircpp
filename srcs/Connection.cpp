@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2022-02-10 18:19:10 }--------------------------**
+**----- Updated -------------{ 2022-02-17 03:42:36 }--------------------------**
 ********************************************************************************
 */
 
@@ -33,7 +33,7 @@ Connection	&Connection::operator=(Connection const &cpy) {
 
 // ____________Constructors______________
 Connection::Connection(std::string const &host, std::string const &port, u_int16_t family) throw(Connection::ConxInit) :
-	status(CONX_LOCAL), link(NO_LINK), hop(1) {
+	status(CONX_NOFLAG), link(NO_LINK), hop(1) {
 	int yes = 1;
 	int	sock;
 
@@ -52,6 +52,7 @@ Connection::Connection(std::string const &host, std::string const &port, u_int16
 			throw(Connection::ConxInit("bind() function failed."));
 		if (listen(sock, MAX_PENDING_CONNECTION) == -1)
 			throw(Connection::ConxInit("listen() function failed."));
+		isLocal(true);
 	} else {
 		if (connect(sock, info.sockaddr(), info.addrLen()) == -1)
 			throw(Connection::ConxInit("connect() function failed."));
@@ -70,6 +71,8 @@ Connection::Connection(int lsock) throw(Connection::ConxInit) : status(0), link(
 		throw(Connection::ConxInit("Function accept() failed."));
 	try {
 		info = SockInfo(output_addr, ACCEPT);
+		if (info.family() == AF_INET6)
+			isIPv6(true);
 		stream = SockStream(sock);
 	} catch (std::exception &ex) {
 		throw(Connection::ConxInit("SockInfo() or SockStream() constructor failed."));
@@ -80,8 +83,8 @@ Connection::Connection(Connection *link, unsigned short status, size_t hop) :
 	stream(-1), status(status), link(link), hop(hop) { return; }
 
 // __________Member functions____________
-std::string const &Connection::hostname(void) const { return info.host; }
-std::string const &Connection::name(void) const { return hostname(); }
+std::string const Connection::hostname(void) const { return (info.host); }
+std::string const Connection::name(void) const { return hostname(); }
 
 bool	Connection::read(void) { return(!stream.read() ? false : true); }
 void	Connection::write(void) throw(SockStream::SendFunctionException) { stream.write(); }

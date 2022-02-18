@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ AddrInfo.cpp }---------------------------------**
 **----- Created -------------{ 2021-12-03 02:58:12 }--------------------------**
-**----- Updated -------------{ 2022-02-02 23:37:50 }--------------------------**
+**----- Updated -------------{ 2022-02-10 20:30:52 }--------------------------**
 ********************************************************************************
 */
 
@@ -37,26 +37,6 @@ AddrInfo &AddrInfo::operator=(AddrInfo const &cpy) {
 	ai_addr = cpy.ai_addr;
 	ai_canonname = cpy.ai_canonname;
 	return *this;
-}
-
-static void hexdump(void const *ptr, int buflen) {
-  unsigned char *buf = (unsigned char *)ptr;
-  int i, j;
-  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-  for (i=0; i<buflen; i+=16) {
-    printf("%06x: ", i);
-    for (j=0; j<16; j++) 
-      if (i+j < buflen)
-        printf("%02x ", buf[i+j]);
-      else
-        printf("   ");
-    printf(" ");
-    for (j=0; j<16; j++) 
-      if (i+j < buflen)
-        printf("%c", isprint(buf[i+j]) ? buf[i+j] : '.');
-    printf("\n");
-  }
-  printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 }
 
 AddrInfo::AddrInfo(t_ai *src) :

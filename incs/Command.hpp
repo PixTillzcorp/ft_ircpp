@@ -2,8 +2,6 @@
 #define FT_IRC_COMMAND_HPP
 
 #include "Message.hpp"
-#include "Debug.hpp"
-#include "Utils.hpp"
 
 #include <vector>
 

@@ -7,7 +7,7 @@
 
 #include <unistd.h>
 
-#define MAX_PENDING_CONNECTION 15
+#define MAX_PENDING_CONNECTION 0
 #define NO_SOCK -1
 #define NO_LINK nullptr
 
@@ -42,8 +42,8 @@ public:
 	Connection(Connection *link, unsigned short status, size_t hop);								// link
 
 	// __________Member functions____________
-	std::string const			&hostname(void) const;
-	virtual std::string const	&name(void) const;
+	std::string const			hostname(void) const;
+	virtual std::string const	name(void) const;
 
 	bool	read(void);
 	void	write(void) throw(SockStream::SendFunctionException);

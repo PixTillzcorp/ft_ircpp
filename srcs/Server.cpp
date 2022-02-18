@@ -11,12 +11,11 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Server.cpp }-----------------------------------**
 **----- Created -------------{ 2021-05-26 16:47:47 }--------------------------**
-**----- Updated -------------{ 2022-02-10 02:07:57 }--------------------------**
+**----- Updated -------------{ 2022-02-15 20:27:39 }--------------------------**
 ********************************************************************************
 */
 
 #include "Server.hpp"
-#include "Utils.hpp"
 
 // ____________Canonical Form____________
 Server::~Server(void) {
@@ -75,7 +74,7 @@ Server::Server(std::string const &host, std::string const &port, u_int16_t famil
 }
 
 // __________Member functions____________
-std::string const		&Server::name(void) const { return servername; }
+std::string const		Server::name(void) const { return servername; }
 
 Command::argvec const	Server::serverArgsShare(std::string const &servertoken) const {
 	Command::argvec ret;

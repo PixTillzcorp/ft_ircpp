@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2022-02-08 03:48:07 }--------------------------**
+**----- Updated -------------{ 2022-02-15 21:50:29 }--------------------------**
 ********************************************************************************
 */
 
@@ -50,7 +50,7 @@ Client::Client(Connection *link, size_t hop) :
 	modes(CLIENT_NOMODE) { return; }
 
 // __________Member functions____________
-std::string const	&Client::name(void) const {
+std::string const	Client::name(void) const {
 	if (isRegistered())
 		return nickname;
 	else {
@@ -72,12 +72,17 @@ std::string const	Client::fullId(void) const {
 
 Command::argvec		Client::nickArgs(std::string const &servertoken) const {
 	Command::argvec ret;
+	std::string		host;
 
 	ret.push_back(nickname);
 	try { ret.push_back(Utils::nbrToStr(hop)); }
 	catch (Utils::FailStream &ex) { ret.push_back("none"); }
 	ret.push_back(username);
-	ret.push_back(hostname());
+	host = hostname();
+	if (isIPv6())
+		ret.push_back((!host.rfind(":", 0) ? "0" + host : host));
+	else
+		ret.push_back(host);
 	ret.push_back(servertoken);
 	ret.push_back(getModesFlags());
 	ret.push_back(realname);
