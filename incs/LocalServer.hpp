@@ -70,6 +70,10 @@ public: // #####################################################################
 	ConfigParser const							&getWhitelist(void) const { return this->_whitelist; }
 	void										setWhitelist(ConfigParser const &src) { this->_whitelist = src; }
 
+	// _motd
+	std::list<std::string> const				&getMotd(void) const { return this->_motd; }
+	void										setMotd(std::list<std::string> const &src) { this->_motd = src; }
+
 	// ______________Exceptions______________
 
 private: // ####################################################################
@@ -82,6 +86,7 @@ private: // ####################################################################
 	std::stringstream					_stdout;
 	ConfigParser						_whitelist;
 	LogFile								_log;
+	std::list<std::string>				_motd;
 
 	// ___________Connection utils___________
 	void		newConx(void);
@@ -111,6 +116,7 @@ private: // ####################################################################
 	virtual void newToken(void);
 	bool		isUniqueToken(std::string const &cmp) const;
 
+	void		loadMotd(void);
 	// ______________Broadcast_______________
 	void	broadcastToServers(Server *sender, Command const &cmd);
 	void	broadcastToClients(Client *sender, Command const &cmd);

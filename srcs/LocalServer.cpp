@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LocalServer.cpp }------------------------------**
 **----- Created -------------{ 2021-09-07 16:32:43 }--------------------------**
-**----- Updated -------------{ 2022-02-22 03:54:42 }--------------------------**
+**----- Updated -------------{ 2022-02-22 16:20:26 }--------------------------**
 ********************************************************************************
 */
 
@@ -32,7 +32,8 @@ LocalServer::~LocalServer() {
 LocalServer::LocalServer(LocalServer const &src) :
 	inherited(static_cast<inherited const &>(src)), _sm(src.getSM()),
 	_password(src.getPassword()), _oppass(src.getOppass()),
-	_whitelist(src.getWhitelist()), _log(src.getLog()) { return; }
+	_whitelist(src.getWhitelist()), _log(src.getLog()),
+	_motd(src.getMotd()) { return; }
 LocalServer &LocalServer::operator=(LocalServer const &src) {
 	static_cast<inherited &>(*this) = static_cast<inherited const &>(src);
 	_sm = src.getSM();
@@ -40,6 +41,7 @@ LocalServer &LocalServer::operator=(LocalServer const &src) {
 	_oppass = src.getOppass();
 	_whitelist = src.getWhitelist();
 	_log = src.getLog();
+	_motd = src.getMotd();
 	return *this;
 }
 
@@ -62,6 +64,7 @@ inherited("", port, family), _sm(sock(), true), _password(password), _log("") {
 		throw(Connection::ConxInit("Config file requires valid log file name. \'logfile = [filename]\'"));
 	if ((_whitelist = ConfigParser(LOCALSERV_WHITELIST_FILE)).empty())
 		logNotify(false, "Empty whitelist: server launched in standalone.");
+	loadMotd();
 	return;
 }
 
@@ -1328,29 +1331,39 @@ void		LocalServer::execPong(Client *sender, PongCommand const &cmd) { //command 
 	cmd.isValid();
 }
 
-void		LocalServer::execMotd(Client *sender, MotdCommand const &cmd) {
+void		LocalServer::loadMotd(void) {
 	std::ifstream file("motd.txt");
 	std::string input;
-	std::string tmp;
 
-	cmd.isValid();
 	if (!file.is_open())
+		return;
+	while (std::getline(file, input)) {
+		Utils::graphicalOnly(input);
+		Utils::clearSpaces(input, false);
+		while (input.length() > MAX_MOTD_READ) {
+			_motd.push_back(input.substr(0, MAX_MOTD_READ));
+			input.erase(0, MAX_MOTD_READ);			
+		}
+		if (input.length() < MAX_MOTD_READ)
+			input += std::string(MAX_MOTD_READ - input.length(), '_');
+		_motd.push_back(input);
+	}
+	if (file.bad()) {
+		logNotify(true, "Error while reading MOTD file.");
+		_motd.clear();
+	}
+	file.close();
+}
+
+void		LocalServer::execMotd(Client *sender, MotdCommand const &cmd) {
+	cmd.isValid();
+	if (_motd.empty())
 		numericReply(sender, ERR_NOMOTD);
 	else {
-		numericReply(sender, RPL_MOTDSTART, hostname());
-		while (std::getline(file, input)) {
-			while (!input.empty()) {
-				if (input.length() < MAX_MOTD_READ)
-					input.append(std::string(MAX_MOTD_READ - input.length(), ' '));
-				tmp = input.substr(0, MAX_MOTD_READ);
-				input.erase(0, MAX_MOTD_READ);
-				numericReply(sender, RPL_MOTD, tmp);
-			}
-		}
-		if (file.bad())
-			logNotify(true, "Error while reading MOTD file.");
+		numericReply(sender, RPL_MOTDSTART, name());
+		for (std::list<std::string>::const_iterator it = _motd.begin(); it != _motd.end(); it++)
+			numericReply(sender, RPL_MOTD, *it);
 		numericReply(sender, RPL_ENDOFMOTD);
-		file.close();
 	}
 }
 
