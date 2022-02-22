@@ -55,6 +55,11 @@ namespace Utils {
 	void			clearSpaces(std::string &str, bool all);
 	void			graphicalOnly(std::string &str);
 	bool			isNotGraph(int c);
+	std::string		readSomeCXX(std::istream &is, size_t n);
+	bool			streamIsGoodC(FILE *stream);
+	std::string		readSomeC(FILE *is, size_t n);
+	void			writeSomeC(FILE *os, std::string &data);
+	std::string		date(void);
 }
 
 #endif //UTILS_HPP

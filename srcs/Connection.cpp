@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Connection.cpp }-------------------------------**
 **----- Created -------------{ 2021-04-30 18:32:26 }--------------------------**
-**----- Updated -------------{ 2022-02-17 03:42:36 }--------------------------**
+**----- Updated -------------{ 2022-02-22 00:57:37 }--------------------------**
 ********************************************************************************
 */
 
@@ -83,7 +83,12 @@ Connection::Connection(Connection *link, unsigned short status, size_t hop) :
 	stream(-1), status(status), link(link), hop(hop) { return; }
 
 // __________Member functions____________
-std::string const Connection::hostname(void) const { return (info.host); }
+std::string const Connection::hostname(void) const {
+	if (isLink())
+		return (info.host);
+	else
+		return (info.canonname());
+}
 std::string const Connection::name(void) const { return hostname(); }
 
 bool	Connection::read(void) { return(!stream.read() ? false : true); }
@@ -98,8 +103,10 @@ void	Connection::send(Message const &msg) {
 		stream.queueMessage(msg);
 }
 void	Connection::send(Command const &cmd) {
-	if (!isFinished() && !isLink())
-		stream.queueMessage(cmd.message());
+	if (!isLink()) {
+		if (!isFinished() || (isServer() && cmd == "SQUIT"))
+			stream.queueMessage(cmd.message());
+	}
 }
 Message Connection::getLastMessage(void) { return (stream.getLastMessage()); }
 Command Connection::getLastCommand(void) {

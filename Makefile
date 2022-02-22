@@ -122,7 +122,7 @@ SRCO_TEST_QUICK = test_quick.o
 
 SRCO_TEST_UTILS = test_utils.o Utils.o
 
-SRCO_TEST_LOGFILE = test_logfile.o LogFile.o
+SRCO_TEST_LOGFILE = test_logfile.o LogFile.o Utils.o
 
 SRCO_TEST_CONFIGPARSER = test_configparser.o ConfigParser.o
 

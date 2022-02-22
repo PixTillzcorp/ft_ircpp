@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SelectModule.cpp }-----------------------------**
 **----- Created -------------{ 2021-08-06 16:17:43 }--------------------------**
-**----- Updated -------------{ 2022-02-18 21:36:49 }--------------------------**
+**----- Updated -------------{ 2022-02-21 20:11:55 }--------------------------**
 ********************************************************************************
 */
 
@@ -43,7 +43,7 @@ SelectModule::SelectModule(int sock, bool stdin) {
 
 // __________Member functions____________
 
-void	SelectModule::call(std::list<Connection *> &conxs, std::string &stdout, bool purge) {
+void	SelectModule::call(std::list<Connection *> &conxs, std::string &stdout, LogFile &log, std::string &logdata, bool purge) {
 	std::list<Connection *>::iterator it;
 
 	_rfds.zeroFd();
@@ -52,6 +52,8 @@ void	SelectModule::call(std::list<Connection *> &conxs, std::string &stdout, boo
 		_rfds.setFds(_mfds.getFds());
 		if (!stdout.empty())
 			_wfds.addFd(STDOUT_FILENO);
+		if (!logdata.empty() && log.fd != -1)
+			_wfds.addFd(log.fd);
 	}
 	for (it = conxs.begin(); it != conxs.end(); it++) {
 		if ((*it)->isServer())
@@ -76,6 +78,8 @@ void	SelectModule::call(std::list<Connection *> &conxs, std::string &stdout, boo
 		throw(SelectModule::SelectException());
 	if (checkStdout())
 		std::cout << stdout;
+	if (checkWfds(log.fd))
+		Utils::writeSomeC(log.stream, logdata);
 }
 
 void	SelectModule::addFd(int sock) {

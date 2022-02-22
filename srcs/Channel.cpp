@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Channel.cpp }----------------------------------**
 **----- Created -------------{ 2021-10-11 15:03:32 }--------------------------**
-**----- Updated -------------{ 2022-02-15 18:57:05 }--------------------------**
+**----- Updated -------------{ 2022-02-22 03:48:26 }--------------------------**
 ********************************************************************************
 */
 
@@ -79,9 +79,9 @@ void			Channel::leave(Client *leaver) {
 	if (!leaver)
 		return;
 	leaver->removeChanFromList(_name);
-	_members.erase(leaver);
 	if (isCreator(leaver))
 		swapCreator();
+	_members.erase(leaver);
 }
 
 bool			Channel::empty(void) const { return (_members.empty()); }
@@ -138,7 +138,6 @@ bool			Channel::isOnChan(Client *user) const {
 	return _members.count(user);
 }
 
-
 void			Channel::addInvite(std::string const &nick) {
 	if (!isInvited(nick))
 		_invites.push_back(nick);
@@ -167,7 +166,7 @@ bool Channel::isOperator(Client *user) const {
 }
 bool Channel::isVoice(Client *user) const 	 { return checkStatus(user, CHAN_USER_VOICE); }
 bool Channel::isMember(Client *user) const	 { return checkStatus(user, CHAN_USER_MEMBER); }
-bool Channel::canTalk(Client *user) const {
+bool Channel::canTalk(Client *user) const	{
 	if (!user)
 		return false;
 	else if (!isModerated())
@@ -320,13 +319,16 @@ void			Channel::broadcast(Client *sender, Command const &cmd) {
 void			Channel::swapCreator(void) {
 	Client			*tmp;
 
-	if ((tmp = pickMember(CHAN_USER_OPERATOR)))
-		_members[tmp] = CHAN_USER_CREATOR;
+	if (empty())
+		return;
+	else if ((tmp = pickMember(CHAN_USER_OPERATOR)))
+		_members.find(tmp)->second = CHAN_USER_CREATOR;
 	else if ((tmp = pickMember(CHAN_USER_VOICE)))
-		_members[tmp] = CHAN_USER_CREATOR;
+		_members.find(tmp)->second = CHAN_USER_CREATOR;
 	else if ((tmp = pickMember(CHAN_USER_MEMBER)))
-		_members[tmp] = CHAN_USER_CREATOR;
-	delete this;
+		_members.find(tmp)->second = CHAN_USER_CREATOR;
+	if (tmp)
+		tmp->send(NoticeCommand(NO_PREFIX, tmp->name(), "You are \"" + _name + "\'s\" new creator."));
 }
 
 void			Channel::giveVoice(Client *user) {
@@ -371,6 +373,7 @@ void			Channel::revokeInvite(std::string const &nick) { _invites.erase(std::find
 
 std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
 	std::list<Client *> names;
+	Client				*creator;
 
 	src.clientsList(names);
 	flux << src.getName() << std::endl;
@@ -388,7 +391,10 @@ std::ostream		&operator<<(std::ostream &flux, Channel const &src) {
 	flux << (src.isUserLimit() ? '1' : '0');
 	flux << (src.isLocalChannel() ? '1' : '0');
 	flux << ']' << std::endl;
-	flux << "Creator: " << *(src.pickMember(CHAN_USER_CREATOR)) << std::endl;
+	if ((creator = src.pickMember(CHAN_USER_CREATOR)))
+		flux << "Creator: " << *creator << std::endl;
+	else
+		flux << "No creator, channel unstable." << std::endl;
 	flux << std::string(35, '>') << std::endl;
 	if (!names.empty()) {
 		for (std::list<Client *>::const_iterator it = names.begin(); it != names.end(); it++) {

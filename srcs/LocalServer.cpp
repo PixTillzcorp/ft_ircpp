@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LocalServer.cpp }------------------------------**
 **----- Created -------------{ 2021-09-07 16:32:43 }--------------------------**
-**----- Updated -------------{ 2022-02-18 22:30:39 }--------------------------**
+**----- Updated -------------{ 2022-02-22 03:54:42 }--------------------------**
 ********************************************************************************
 */
 
@@ -23,28 +23,29 @@
 
 // ____________Canonical Form____________
 LocalServer::~LocalServer() {
-	_logfile.append(LOG_DATE, LOG_PURPLE, "\t\t+ Server closed successfuly +");
-	_logfile.append(LOG_DATE, LOG_PURPLE, "###############################################");
+	_log.append(LOG_DATE, LOG_PURPLE, "\t\t+ Server closed successfuly +");
+	_log.append(LOG_DATE, LOG_PURPLE, "###############################################");
+	_log.end();
 	return;
 }
 // LocalServer::LocalServer() { return; } /* Private standard constructor*/
 LocalServer::LocalServer(LocalServer const &src) :
 	inherited(static_cast<inherited const &>(src)), _sm(src.getSM()),
 	_password(src.getPassword()), _oppass(src.getOppass()),
-	_logfile(src.getLogfile()), _whitelist(src.getWhitelist()) { return; }
+	_whitelist(src.getWhitelist()), _log(src.getLog()) { return; }
 LocalServer &LocalServer::operator=(LocalServer const &src) {
 	static_cast<inherited &>(*this) = static_cast<inherited const &>(src);
 	_sm = src.getSM();
 	_password = src.getPassword();
 	_oppass = src.getOppass();
-	_logfile = src.getLogfile();
 	_whitelist = src.getWhitelist();
+	_log = src.getLog();
 	return *this;
 }
 
 // _____________Constructor______________
 LocalServer::LocalServer(std::string const &port, u_int16_t family, std::string const &password) :
-inherited("", port, family), _sm(sock(), true), _password(password), _logfile("") {
+inherited("", port, family), _sm(sock(), true), _password(password), _log("") {
 	ConfigParser conf("server.config");
 
 	if (conf.empty())
@@ -57,7 +58,7 @@ inherited("", port, family), _sm(sock(), true), _password(password), _logfile(""
 		desc = std::string("No description for this server");
 	if ((_oppass = conf["oppass"]).empty())
 		throw(Connection::ConxInit("Config file requires valid operator password. \'oppass = [password]\'"));
-	if (!(_logfile = LogFile(conf["logfile"])))
+	if (!!(_log = LogFile(conf["logfile"])))
 		throw(Connection::ConxInit("Config file requires valid log file name. \'logfile = [filename]\'"));
 	if ((_whitelist = ConfigParser(LOCALSERV_WHITELIST_FILE)).empty())
 		logNotify(false, "Empty whitelist: server launched in standalone.");
@@ -67,8 +68,8 @@ inherited("", port, family), _sm(sock(), true), _password(password), _logfile(""
 // __________Member functions____________
 
 bool		LocalServer::run(void) {
-	_logfile.append(LOG_DATE, LOG_PURPLE, "\t[" + std::string(SERVER_VERSION) + "] ################################");
-	_logfile.append(LOG_DATE, LOG_PURPLE, "\t\t+ Server launched successfuly +");
+	_log.append(LOG_DATE, LOG_PURPLE, "\t[" + std::string(SERVER_VERSION) + "] ################################");
+	_log.append(LOG_DATE, LOG_PURPLE, "\t\t+ Server launched successfuly +");
 	while(!isFinished() || !conxs.empty()) {
 		try { selectCall(); }
 		catch (SelectModule::SelectException &ex) {
@@ -173,7 +174,7 @@ Client		*LocalServer::newLink(Server *sender, NickCommand const &cmd) {
 	return cli;
 }
 
-void		LocalServer::finishConx(Server *sender, Client *target, std::string const &quitmsg) {
+void		LocalServer::finishConx(Server *sender, Client *target, std::string const &quitmsg, bool netsplit) {
 	if (!target)
 		return;
 	if (!target->isLink()) {
@@ -183,6 +184,8 @@ void		LocalServer::finishConx(Server *sender, Client *target, std::string const 
 			target->send(ErrorCommand("[" + target->name() + "] Closing connection"));
 		else
 			target->send(ErrorCommand("[" + target->name() + "] Closing connection (" + quitmsg + ")"));
+		if (!netsplit)
+			broadcastToServers(sender, QuitCommand(target->nickname, quitmsg));
 		logNotify(true, "Ending \'Client\' connection -> [" + target->name() + "]");
 	} else
 		logNotify(true, "Ending \'Client *\' connection -> [" + target->name() + "]");
@@ -193,14 +196,12 @@ void		LocalServer::finishConx(Server *sender, Client *target, std::string const 
 
 	// leaves channels if necessary
 	updateChans(target, QuitCommand(target->fullId(), quitmsg));
-
-	if (quitmsg.rfind("Netsplit", 0) == std::string::npos) //if not netsplit
-		broadcastToServers(sender, QuitCommand(target->nickname, quitmsg));
 }
 
 void		LocalServer::finishConx(Server *sender, Server *target, std::string const &quitmsg, bool netsplit) {
 	if (!target)
 		return;
+	target->isFinished(true);
 	if (!target->isLink()) {
 		target->clearInputMessages();
 		target->clearOutputMessages();
@@ -208,9 +209,12 @@ void		LocalServer::finishConx(Server *sender, Server *target, std::string const 
 			target->send(SquitCommand(name(), target->name(), quitmsg));
 		for (conxlist_it it = target->conxs.begin(); it != target->conxs.end(); it++) {
 			if ((*it)->isClient())
-				finishConx(nullptr, static_cast<Client *>(*it), quitmsg);
-			else if ((*it)->isServer())
+				finishConx(nullptr, static_cast<Client *>(*it), quitmsg, true);
+			else if ((*it)->isServer()) {
 				finishConx(nullptr, static_cast<Server *>(*it), quitmsg, true);
+				if (netsplit && !target->compare(this))
+					(*it)->send(SquitCommand(name(), (*it)->name(), quitmsg));
+			}
 			else {
 				(*it)->send(ErrorCommand("Server shutdown."));
 				finishConx(*it);
@@ -222,13 +226,14 @@ void		LocalServer::finishConx(Server *sender, Server *target, std::string const 
 			logNotify(true, "Ending \'Server\' connection -> [" + target->name() + "]");
 	} else
 		logNotify(true, "- Ending \'Server *\' connection -> [" + target->name() + "]");
-	target->isFinished(true);
 	if (target->isLink() && netsplit)
 		return;
-	if (sender)
-		broadcastToServers(sender, SquitCommand(sender->name(), target->name(), quitmsg));
-	else
-		broadcastToServers(target, SquitCommand(name(), target->name(), quitmsg));
+	if (target->compare(this)) {
+		if (sender)
+			broadcastToServers(sender, SquitCommand(sender->name(), target->name(), quitmsg));
+		else
+			broadcastToServers(target, SquitCommand(name(), target->name(), quitmsg));
+	}
 }
 
 void		LocalServer::finishConx(Connection *target) {
@@ -246,23 +251,31 @@ void		LocalServer::setNewLocalop(void) {
 		if (!(*it)->isFinished() && (*it)->isClient()) {
 			if (!hasClient)
 				hasClient = true;
-			if (static_cast<Client *>(*it)->isOperator())
-				return static_cast<Client *>(*it)->isLocalop(true);
+			if (static_cast<Client *>(*it)->isOperator()) {
+				static_cast<Client *>(*it)->isLocalop(true);
+				return warnAllOperators("The new local operator is \'" + (*it)->name() + "\'");
+			}
 		}
 	}
 	if (!hasClient)
 		return;
 	for (conxlist_it it = conxs.begin(); it != conxs.end(); it++) {
-		if (!(*it)->isFinished() && (*it)->isClient() && static_cast<Client *>(*it)->isWallops())
-			return static_cast<Client *>(*it)->isLocalop(true);
+		if (!(*it)->isFinished() && (*it)->isClient() && static_cast<Client *>(*it)->isWallops()) {
+			static_cast<Client *>(*it)->isLocalop(true);
+			return warnAllOperators("The new local operator is \'" + (*it)->name() + "\'");
+		}
 	}
 	for (conxlist_it it = conxs.begin(); it != conxs.end(); it++) {
-		if (!(*it)->isFinished() && (*it)->isClient() && !static_cast<Client *>(*it)->isRestricted())
-			return static_cast<Client *>(*it)->isLocalop(true);
+		if (!(*it)->isFinished() && (*it)->isClient() && !static_cast<Client *>(*it)->isRestricted()) {
+			static_cast<Client *>(*it)->isLocalop(true);
+			return warnAllOperators("The new local operator is \'" + (*it)->name() + "\'");
+		}
 	}
 	for (conxlist_it it = conxs.begin(); it != conxs.end(); it++) {
-		if (!(*it)->isFinished() && (*it)->isClient())
-			return static_cast<Client *>(*it)->isLocalop(true);
+		if (!(*it)->isFinished() && (*it)->isClient()) {
+			static_cast<Client *>(*it)->isLocalop(true);
+			return warnAllOperators("The new local operator is \'" + (*it)->name() + "\'");
+		}
 	}
 }
 
@@ -283,7 +296,7 @@ void		LocalServer::finishChan(Channel *target) {
 		return;
 	for (chanlist_it it = _chans.begin(); it != _chans.end(); it++) {
 		if ((*it) == target) {
-			logNotify(true, "Channel deleted ! [" + target->getName() + "]");
+			logNotify(true, "Channel \'" + target->getName() + "\' deleted, no members left.");
 			_chans.erase(it);
 			delete target;
 			break;
@@ -387,13 +400,12 @@ std::string const LocalServer::whitelistPassword(std::string const &svrname) con
 	return std::string();
 }
 
-
 void		LocalServer::newToken(void) {
 	logNotify(false, "Generating new token for server...");
 	inherited::newToken();
 	if (!token.compare("none"))
 		return finishConx(nullptr, this, "Internal error.", false);
-	logNotify(false, "New token [" + token + "]");
+	logNotify(false, "Generation done. New token is [" + token + "].");
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -494,27 +506,28 @@ std::string const 	LocalServer::howManyChannel(void) const { return Utils::nbrTo
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void		LocalServer::selectCall(void) {
-	std::string tmp;
+	std::string stdtmp;
+	std::string logtmp;
 
-	if (_stdout)
-		outputStringFragment(_stdout, tmp);
-	if (_stdout.eof()) {
-		if (!_stdout.bad())
-			_stdout.clear();
-		else
-			logNotify(true, "Standard output died.");
+	if (_stdout) {
+		stdtmp = Utils::readSomeCXX(_stdout, MAX_IOSTEP_LENGTH);
+		if (_stdout.eof()) {
+			if (!_stdout.bad())
+				_stdout.clear();
+			else
+				logNotify(true, "Standard output died.");
+		}
 	}
-	_sm.call(conxs, tmp, isFinished());
-}
-
-void		LocalServer::outputStringFragment(std::istream &is, std::string &dest) {
-	char	c;
-
-	while (is.get(c)) {
-		dest += c;
-		if (dest.length() == MAX_IOSTEP_LENGTH)
-			break;
+	if (!!_log) {
+		logtmp = Utils::readSomeCXX(_log.buf, MAX_IOSTEP_LENGTH);
+		if (_log.buf.eof()) {
+			if (!_log.buf.bad())
+				_log.buf.clear();
+			else
+				_log.setErrorState();
+		}
 	}
+	_sm.call(conxs, stdtmp, _log, logtmp, isFinished());
 }
 
 bool		LocalServer::isReadable(Connection *conx) const { return _sm.checkRfds(conx->sock()); }
@@ -528,7 +541,7 @@ void		LocalServer::checkStd(void) {
 		return;
 	if (_sm.checkStdin()) {
 		if (std::cin) {
-			outputStringFragment(std::cin, input);
+			input = Utils::readSomeCXX(std::cin, MAX_IOSTEP_LENGTH);
 			Utils::clearSpaces(input, false);
 			if (!input.compare("\n") && _stdin.empty())
 				return std::cin.clear();
@@ -553,7 +566,7 @@ void		LocalServer::checkStd(void) {
 			if (cmd.empty())
 				continue;
 			if (!cmd.compare("EXIT") || !cmd.compare("Exit") || !cmd.compare("exit"))
-				return finishConx(nullptr, this, "Console shutdown. \'exit\')", false);
+				finishConx(nullptr, this, "Console shutdown. \'exit\')", true);
 			else if (!cmd.compare("NET") || !cmd.compare("Net") || !cmd.compare("net"))
 				showNet();
 			else if (!cmd.compare("CHANS") || !cmd.compare("Chans") || !cmd.compare("chans"))
@@ -562,7 +575,7 @@ void		LocalServer::checkStd(void) {
 				_stdout << "Unknown command \'" << cmd << "\'" << std::endl;
 				continue;
 			}
-			_logfile.append(LOG_DATE, LOG_PINK, "Command line input $> [" + cmd + "]");
+			_log.append(LOG_DATE, LOG_PINK, "Command line input $> [" + cmd + "]");
 		}
 	}
 }
@@ -665,6 +678,8 @@ void		LocalServer::execCommandPending(Connection *&sender, Command const &cmd) {
 }
 
 void		LocalServer::execCommandClient(Client *&sender, Command const &cmd) {
+	if (cmd != "PING")
+	logNotify(false, "~{" + cmd.command + "}~ from client [" + sender->name() + "] received.");
 	if (!sender->isRegistered()) {
 		if (cmd == "NICK")
 			execNick(sender, NickCommand(cmd));
@@ -729,7 +744,7 @@ void		LocalServer::execCommandClient(Client *&sender, Command const &cmd) {
 }
 
 void		LocalServer::execCommandServer(Server *sender, Command const &cmd) {
-	logNotify(false, "~{" + cmd.command + "}~ received from server [" + sender->name() + "] is being treated.");
+	logNotify(false, "~{" + cmd.command + "}~ from server [" + sender->name() + "] received.");
 	if (cmd == "NICK")
 		execNick(sender, NickCommand(cmd));
 	else if (cmd == "JOIN")
@@ -1036,10 +1051,11 @@ void		LocalServer::execJoin(Server *sender, JoinCommand const &cmd) {
 		else {
 			if (!(chan = findChannel(token))) {
 				if (!(chan = newChan(source, token)))
-					return logNotify(true, "New \'Channel\' created Internal error.");
+					return logNotify(true, "New \'Channel\' created an internal error.");
 			}
 			else if ((code = chan->join(source)))
 				continue;
+			logSuccess("[" + token + "] joined \'" + chan->getName() + "\' successfuly.");
 		}
 	}
 	broadcastToServers(sender, cmd);
@@ -1058,6 +1074,9 @@ void		LocalServer::execPart(Server *sender, PartCommand const &cmd) {
 		return logError(sender, "PART -> Target not inside channel \'" + cmd.target() + "\'.", "PART Command failed.");
 	else {
 		chan->updateClients(source, cmd);
+		logNotify(true, "[" + source->name() + "] left \'" + chan->getName() + "\' successfuly.");
+		if (chan->empty())
+			finishChan(chan);
 		broadcastToServers(sender, cmd);
 	}
 }
@@ -1112,7 +1131,7 @@ void		LocalServer::execQuit(Server *sender, QuitCommand const &cmd) {
 	cmd.isValid();
 	if (!(source = findClient(cmd.prefix, NICKNAME)))
 		return logError(sender, "QUIT -> Command\'s source does not exist.", "QUIT Command failed.");
-	finishConx(sender, source, cmd.message());
+	finishConx(sender, source, cmd.message(), false);
 }
 
 void		LocalServer::execSquit(Server *sender, SquitCommand const &cmd) {
@@ -1121,6 +1140,10 @@ void		LocalServer::execSquit(Server *sender, SquitCommand const &cmd) {
 	cmd.isValid();
 	if (!cmd.server().compare(servername)) {
 		logNotify(true, "Netsplit with \'" + sender->name() + "\'.");
+		if (cmd.comment().empty())
+			warnAllOperators("Netsplit with \'" + sender->name() + "\'.");
+		else
+			warnAllOperators("Netsplit with \'" + sender->name() + "\'. (" + cmd.comment() + ")");
 		if (cmd.comment().empty())
 			return finishConx(nullptr, sender, "Netsplit with \'" + sender->name() + "\'.", true);
 		else
@@ -1288,7 +1311,11 @@ void		LocalServer::execNotice(Client *sender, NoticeCommand const &cmd) {
 
 void		LocalServer::execQuit(Client *sender, QuitCommand const &cmd) {
 	logNotify(true, "Client \'" + sender->name() + "\' is leaving.");
-	finishConx(nullptr, sender, cmd.message());
+	if (sender->isLocalop())
+		warnAllOperators("Local operator \'" + sender->name() + "\' left the server.");
+	else if (sender->isOperator())
+		warnAllOperators("Operator \'" + sender->name() + "\' left the server.");
+	finishConx(nullptr, sender, cmd.message(), false);
 }
 
 void		LocalServer::execPing(Client *sender, PingCommand const &cmd) {
@@ -1383,6 +1410,7 @@ void		LocalServer::execJoin(Client *sender, JoinCommand const &cmd) {
 			if (chan->hasTopic())
 				numericReply(sender, RPL_TOPIC, chan);
 			execNames(sender, NamesCommand(NO_PREFIX, chan->getName()));
+			logSuccess("[" + token + "] joined \'" + chan->getName() + "\' successfuly.");
 		}
 	}
 	broadcastToServers(nullptr, JoinCommand(sender->nickname, cmd.target()));
@@ -1398,6 +1426,9 @@ void		LocalServer::execPart(Client *sender, PartCommand const &cmd) {
 		numericReply(sender, ERR_NOTONCHANNEL, cmd.target());
 	else {
 		chan->updateClients(sender, cmd);
+		logNotify(true, "[" + sender->name() + "] left \'" + chan->getName() + "\' successfuly.");
+		if (chan->empty())
+			finishChan(chan);
 		broadcastToServers(nullptr, PartCommand(sender->nickname, cmd.args));
 	}
 }
@@ -1682,7 +1713,7 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code) {
 		case RPL_YOURHOST:			ret.addArg("Your host is " + servername\
 									+ ", running version " + version); break;
 		case RPL_CREATED:			ret.addArg("This server was created "\
-									+ _logfile.start); break;
+									+ _log.start); break;
 		case RPL_MYINFO:			ret.addArg(servername + " " + version + " "
 									+ std::string(CLIENT_MODE_FLAGS) + " "
 									+ std::string(CHAN_MODE_FLAGS)); break;
@@ -1702,7 +1733,7 @@ void		LocalServer::numericReply(Connection *sender, unsigned short code) {
 		case RPL_UNAWAY: 			ret.addArg("You are no longer marked as being away"); break;
 		case RPL_NOWAWAY: 			ret.addArg("You have been marked as being away"); break;
 		case RPL_LISTEND: 			ret.addArg("End of list"); break;
-		case RPL_ENDOFMOTD: 		ret.addArg("End of MOTD command"); break;
+		case RPL_ENDOFMOTD: 		ret.addArg("End of MOTD reply"); break;
 		case RPL_YOUREOP: 			ret.addArg("You are now an IRC operator"); break;
 		case ERR_NOORIGIN: 			ret.addArg("No origin specified"); break;
 		case ERR_NOTEXTTOSEND: 		ret.addArg("No text to send"); break;
@@ -1958,15 +1989,15 @@ void		LocalServer::namesListAloneClient(std::list<std::string> &lst) const {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 void		LocalServer::logNotify(bool error, std::string const &msg) {
-	_logfile.append(LOG_DATE, (error ? LOG_DARKRED : LOG_DARKGREY), msg);
+	_log.append(LOG_DATE, (error ? LOG_DARKRED : LOG_DARKGREY), msg);
 }
 
 void		LocalServer::logSuccess(std::string const &msg) {
-	_logfile.append(LOG_DATE, LOG_GREEN, msg);
+	_log.append(LOG_DATE, LOG_GREEN, msg);
 }
 
 void		LocalServer::logColored(std::string const &color, std::string const &msg) {
-	_logfile.append(LOG_DATE, color, msg);
+	_log.append(LOG_DATE, color, msg);
 }
 
 void		LocalServer::logPromote(std::string const &rank, std::string const &reason, bool success) {
@@ -1987,7 +2018,7 @@ void		LocalServer::logMode(std::string const &type, std::string const &name, std
 void		LocalServer::logError(Connection *target, std::string const &msg) {
 	logNotify(true, msg);
 	if (target->isClient())
-		finishConx(nullptr, static_cast<Client *>(target), msg);
+		finishConx(nullptr, static_cast<Client *>(target), msg, false);
 	else if (target->isServer())
 		finishConx(nullptr, static_cast<Server *>(target), msg, true);
 	else
@@ -1999,7 +2030,7 @@ void		LocalServer::logError(Connection *target, std::string const &msg, std::str
 	if (!errmsg.empty())
 		target->send(ErrorCommand(errmsg));
 	if (target->isClient())
-		finishConx(nullptr, static_cast<Client *>(target), msg);
+		finishConx(nullptr, static_cast<Client *>(target), msg, false);
 	else if (target->isServer())
 		finishConx(nullptr, static_cast<Server *>(target), msg, true);
 	else

@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LogFile.cpp }----------------------------------**
 **----- Created -------------{ 2021-12-18 17:24:21 }--------------------------**
-**----- Updated -------------{ 2022-01-18 20:02:50 }--------------------------**
+**----- Updated -------------{ 2022-02-21 20:47:51 }--------------------------**
 ********************************************************************************
 */
 
@@ -20,45 +20,58 @@
 LogFile::~LogFile() {}
 LogFile::LogFile() {}
 LogFile::LogFile(LogFile const &cpy) :
-	fname(cpy.fname), ofs(cpy.fname, std::ios_base::app), start(cpy.start) { return; }
+	fname(cpy.fname), start(cpy.start), stream(nullptr), fd(cpy.fd), err(cpy.err) {
+	init();
+}
 LogFile &LogFile::operator=(LogFile const &cpy) {
 	fname = cpy.fname;
 	start = cpy.start;
+	stream = nullptr;
+	fd = cpy.fd;
+	err = cpy.err;
 
-	if (!ofs.is_open())
-		ofs.open(cpy.fname, std::ios_base::app);
-	else {
-		ofs.close();
-		ofs.open(cpy.fname, std::ios_base::app);
-	}
+	init();
 	return *this;
 }
 
 LogFile::LogFile(std::string const &filename) :
-	fname(filename), ofs(fname, std::ios_base::app), start(date()) { return; }
+	fname(filename), start(Utils::date()), stream(nullptr), fd(-1), err(false) {
+
+	init();
+}
 
 void LogFile::append(bool timestamp, std::string const color, std::string const content) {
-	if (!!ofs && !content.empty()) {
+	if (!err && !content.empty()) {
 		if (timestamp)
-			ofs << "[" << date() << "] ";
+			buf << "= " << Utils::date() << " = ";
 		if (!color.empty())
-			ofs << color;
-		ofs << content << LOG_NORMAL << std::endl;
+			buf << color << content << LOG_NORMAL << std::endl;
+		else
+			buf << content << std::endl;
 	}
 }
 
-std::string LogFile::date(void) {
-	std::time_t rawtime;
-	std::string	str;
-
-	if (std::time(&rawtime) != -1) {
-		str = ctime(&rawtime);
-		if (!str.empty())
-			str.erase(str.end() - 1);
-		return str;
-	}
+void	LogFile::init(void) {
+	if (fname.empty())
+		setErrorState();
+	else if (!(stream = std::fopen(fname.c_str(), "a")))
+		setErrorState();
+	else if ((fd = fileno(stream)) < 0)
+		setErrorState();
 	else
-		return std::string("N/A");
+		fcntl(fd, F_SETFL, O_NONBLOCK);
 }
 
-bool	LogFile::operator!(void) const { return (ofs.good() ? false : true); }
+void	LogFile::end(void) {
+	std::string tmp;
+
+	if (!err) {
+		while (!(tmp = Utils::readSomeCXX(buf, 64)).empty())
+			Utils::writeSomeC(stream, tmp);
+	}
+	std::fclose(stream);
+}
+
+void	LogFile::setErrorState(void) { err = true; }
+
+bool	LogFile::operator!(void) const { return !err; }

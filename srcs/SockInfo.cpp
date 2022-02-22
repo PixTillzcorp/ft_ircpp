@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ SockInfo.cpp }---------------------------------**
 **----- Created -------------{ 2021-05-05 14:52:08 }--------------------------**
-**----- Updated -------------{ 2022-02-10 21:45:59 }--------------------------**
+**----- Updated -------------{ 2022-02-22 02:19:09 }--------------------------**
 ********************************************************************************
 */
 
@@ -88,9 +88,7 @@ std::string			SockInfo::addr(size_t x)	  const { return addrinfo(x).retrieveAddr
 u_int16_t			SockInfo::portNbr(size_t x)	  const { return addrinfo(x).retrievePort(); }
 std::string			SockInfo::canonname(size_t x) const {
 	if (addrinfo(x).ai_canonname.empty()) {
-		if (!(addr(x).compare("::")))
-			return("localhost");
-		if (!(addr(x).compare("::1")))
+		if (!(addr(x).compare("::1")) || !(addr(x).compare("::ffff:127.0.0.1")))
 			return("localhost");
 		else if (!(addr(x).compare("127.0.0.1")))
 			return("localhost");

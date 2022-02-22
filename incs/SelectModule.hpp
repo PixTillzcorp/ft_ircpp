@@ -3,9 +3,10 @@
 
 #include "Server.hpp"
 #include "FdSet.hpp"
+#include "LogFile.hpp"
+
 #include <list>
 #include <unistd.h>
-#include <fcntl.h>
 
 class SelectModule {
 public: // #####################################################################
@@ -20,7 +21,7 @@ public: // #####################################################################
 	SelectModule(int sock, bool stdin);
 
 	// __________Member functions____________
-	void	call(std::list<Connection *> &conxs, std::string &stdout, bool purge);
+	void	call(std::list<Connection *> &conxs, std::string &stdout, LogFile &log, std::string &logdata, bool purge);
 	void	addFd(int sock);
 	void	removeFd(int sock);
 	bool	checkRfds(int sock) const;

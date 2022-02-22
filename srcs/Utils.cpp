@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Utils.cpp }------------------------------------**
 **----- Created -------------{ 2021-12-14 19:24:06 }--------------------------**
-**----- Updated -------------{ 2022-02-18 22:00:40 }--------------------------**
+**----- Updated -------------{ 2022-02-21 19:41:28 }--------------------------**
 ********************************************************************************
 */
 
@@ -199,12 +199,72 @@ void	Utils::graphicalOnly(std::string &str) {
 
 bool	Utils::isNotGraph(int c) { return (c == 32 ? false : !isgraph(c)); }
 
+std::string		Utils::readSomeCXX(std::istream &is, size_t n) {
+	std::string tmp;
+	char	c;
+
+	while (is.get(c)) {
+		tmp += c;
+		if (tmp.length() == n)
+			break;
+	}
+	return tmp;
+}
+
+bool			Utils::streamIsGoodC(FILE *stream) {
+	return (!std::feof(stream) && !std::ferror(stream));
+}
+
+std::string		Utils::readSomeC(FILE *is, size_t n) {
+	std::string	tmp;
+	unsigned char c;
+
+	if (is) {
+		while (streamIsGoodC(is)) {
+			c = static_cast<unsigned char>(std::fgetc(is));
+			if (!streamIsGoodC(is))
+				break;
+			tmp += c;
+			if (tmp.length() == n)
+				break;
+		}
+	}
+	return tmp;
+}
+
+void			Utils::writeSomeC(FILE *os, std::string &data) {
+	unsigned int i = 0;
+
+	if (os) {
+		while (streamIsGoodC(os) && i < data.length()) {
+			std::fputc(data[i++], os);
+			if (!streamIsGoodC(os))
+				break;
+		}
+	}
+}
+
+std::string 	Utils::date(void) {
+	std::time_t rawtime;
+	std::string	str;
+
+	if (std::time(&rawtime) != -1) {
+		str = ctime(&rawtime);
+		if (!str.empty())
+			str.erase(str.end() - 1);
+		return str;
+	}
+	else
+		return std::string("N/A");
+}
+
+
 // ########################################
 // 				 EXECEPTIONS
 // ########################################
 
 Utils::FailStream::~FailStreamException(void) throw() { return; }
-Utils::FailStream::FailStreamException(void) : content("Utils namespace fonction using streams failed.") { return; }
+Utils::FailStream::FailStreamException(void) : content("Utils namespace fonction using C++ streams failed.") { return; }
 Utils::FailStream::FailStreamException(std::string const &content) : content(content) { return; }
 Utils::FailStream::FailStreamException(FailStream const &cpy) :
 	inherited(static_cast<inherited const &>(cpy)), content(cpy.content) { return; }

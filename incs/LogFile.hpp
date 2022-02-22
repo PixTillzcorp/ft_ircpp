@@ -7,6 +7,7 @@
 #include <iostream>
 #include <fstream>
 #include <ctime>
+#include <fcntl.h>
 
 // ____________Colors____________
 #define LOG_BLACK 		"\033[38;5;0m"
@@ -44,9 +45,12 @@
 #define LOG_NODATE	false
 
 struct LogFile {
-	std::string		fname;
-	std::ofstream	ofs;
-	std::string		start;
+	std::string			fname;
+	std::string			start;
+	std::stringstream	buf;
+	FILE				*stream;
+	int					fd;
+	bool				err;
 
 	// ____________Canonical Form____________
 	~LogFile();
@@ -56,14 +60,17 @@ struct LogFile {
 	// ____________Constructors______________
 	LogFile(std::string const &filename);
 
-	void append(bool timestamp, std::string const color, std::string const content);
+	void	append(bool timestamp, std::string const color, std::string const content);
 
-	bool operator!(void) const;
+	void	setErrorState(void);
+	bool	operator!(void) const;
+
+	void	end(void);
 
 private:
 	LogFile();
 
-	std::string date(void);
+	void	init(void);
 };
 
 #endif //LOG_FILE_HPP

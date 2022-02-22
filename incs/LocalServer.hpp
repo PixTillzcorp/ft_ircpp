@@ -6,7 +6,6 @@
 #include "CommandLib.hpp"
 #include "Channel.hpp"
 #include "Server.hpp"
-#include "LogFile.hpp"
 #include "Debug.hpp"
 
 #include <map>
@@ -64,8 +63,8 @@ public: // #####################################################################
 	void										setOppass(std::string const &src) { this->_oppass = src; }
 
 	// _logfile
-	LogFile const								&getLogfile(void) const { return this->_logfile; }
-	void										setLogfile(LogFile const &src) { this->_logfile = src; }
+	LogFile const								&getLog(void) const { return this->_log; }
+	void										setLog(LogFile const &src) { this->_log = src; }
 
 	// _whitelist
 	ConfigParser const							&getWhitelist(void) const { return this->_whitelist; }
@@ -81,12 +80,12 @@ private: // ####################################################################
 	std::string							_oppass;
 	std::string							_stdin;
 	std::stringstream					_stdout;
-	LogFile								_logfile;
 	ConfigParser						_whitelist;
+	LogFile								_log;
 
 	// ___________Connection utils___________
 	void		newConx(void);
-	void		finishConx(Server *sender, Client *target, std::string const &quitmsg);
+	void		finishConx(Server *sender, Client *target, std::string const &quitmsg, bool netsplit);
 	void		finishConx(Server *sender, Server *target, std::string const &quitmsg, bool netsplit);
 	void		finishConx(Connection *target);
 	void		breakLinks(Server *origin);
@@ -131,8 +130,6 @@ private: // ####################################################################
 
 	// ____________Select module_____________
 	void		selectCall(void);
-
-	void		outputStringFragment(std::istream &is, std::string &dest);
 
 	bool		isReadable(Connection *conx) const;
 	bool		isWritable(Connection *conx) const;

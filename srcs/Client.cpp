@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ Client.cpp }-----------------------------------**
 **----- Created -------------{ 2021-06-15 10:22:55 }--------------------------**
-**----- Updated -------------{ 2022-02-15 21:50:29 }--------------------------**
+**----- Updated -------------{ 2022-02-22 00:42:30 }--------------------------**
 ********************************************************************************
 */
 
@@ -62,12 +62,12 @@ std::string const	Client::name(void) const {
 }
 
 std::string const	Client::fullId(void) const {
-	std::ostringstream ss;
+	std::string tmp;
 
 	if (!isRegistered())
 		return std::string();
-	ss << nickname << '!' << username << '@' << hostname();
-	return (ss.str());
+	tmp = nickname + '!' + username + '@' + hostname();
+	return tmp;
 }
 
 Command::argvec		Client::nickArgs(std::string const &servertoken) const {
