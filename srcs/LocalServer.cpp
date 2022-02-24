@@ -11,7 +11,7 @@
 **----- Author --------------{ PixTillz }-------------------------------------**
 **----- File ----------------{ LocalServer.cpp }------------------------------**
 **----- Created -------------{ 2021-09-07 16:32:43 }--------------------------**
-**----- Updated -------------{ 2022-02-22 16:20:26 }--------------------------**
+**----- Updated -------------{ 2022-02-24 18:21:30 }--------------------------**
 ********************************************************************************
 */
 
@@ -65,7 +65,8 @@ inherited("", port, family), _sm(sock(), true), _password(password), _log("") {
 	if ((_whitelist = ConfigParser(LOCALSERV_WHITELIST_FILE)).empty())
 		logNotify(false, "Empty whitelist: server launched in standalone.");
 	loadMotd();
-	return;
+	if (std::signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+		throw(Connection::ConxInit("signal() function failed. Cannot start server with SIGPIPE not ignored."));
 }
 
 // __________Member functions____________
@@ -681,8 +682,6 @@ void		LocalServer::execCommandPending(Connection *&sender, Command const &cmd) {
 }
 
 void		LocalServer::execCommandClient(Client *&sender, Command const &cmd) {
-	if (cmd != "PING")
-	logNotify(false, "~{" + cmd.command + "}~ from client [" + sender->name() + "] received.");
 	if (!sender->isRegistered()) {
 		if (cmd == "NICK")
 			execNick(sender, NickCommand(cmd));

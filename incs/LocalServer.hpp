@@ -10,6 +10,7 @@
 
 #include <map>
 #include <fstream>
+#include <csignal>
 
 #define LOCALSERV_WHITELIST_FILE	"whitelist.config"
 #define NO_TOKEN					""
